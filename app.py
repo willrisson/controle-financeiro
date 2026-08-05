@@ -402,9 +402,20 @@ with aba2:
                             if col_cat and not df_mes_filtrado.empty:
                                 df_c = df_mes_filtrado.groupby(col_cat, as_index=False)["Valor_Mes"].sum()
                                 df_c["Valor_Mes"] = pd.to_numeric(df_c["Valor_Mes"])
+                                
+                                # Cálculo matemático exato da porcentagem real
+                                total_c = df_c["Valor_Mes"].sum()
+                                df_c["Percentual"] = (df_c["Valor_Mes"] / total_c * 100).round(2)
                                 df_c["Valor_Fmt"] = df_c["Valor_Mes"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                                 
-                                fig_cm = go.Figure(data=[go.Pie(labels=df_c[col_cat], values=df_c["Valor_Mes"], text=df_c["Valor_Fmt"], textinfo='label+percent', texttemplate='%{label}<br>%{text}<br>(%{percent})')])
+                                fig_cm = go.Figure(data=[go.Pie(
+                                    labels=df_c[col_cat], 
+                                    values=df_c["Valor_Mes"], 
+                                    text=df_c["Valor_Fmt"], 
+                                    customdata=df_c["Percentual"],
+                                    textinfo='label+percent', 
+                                    texttemplate='%{label}<br>%{text}<br>(%{customdata}%)'
+                                )])
                                 st.plotly_chart(fig_cm, use_container_width=True)
                             else:
                                 st.info("Nenhum gasto neste mês.")
@@ -414,9 +425,20 @@ with aba2:
                             if col_quem and not df_mes_filtrado.empty:
                                 df_q = df_mes_filtrado.groupby(col_quem, as_index=False)["Valor_Mes"].sum()
                                 df_q["Valor_Mes"] = pd.to_numeric(df_q["Valor_Mes"])
+                                
+                                # Cálculo matemático exato da porcentagem real
+                                total_q = df_q["Valor_Mes"].sum()
+                                df_q["Percentual"] = (df_q["Valor_Mes"] / total_q * 100).round(2)
                                 df_q["Valor_Fmt"] = df_q["Valor_Mes"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                                 
-                                fig_qm = go.Figure(data=[go.Pie(labels=df_q[col_quem], values=df_q["Valor_Mes"], text=df_q["Valor_Fmt"], textinfo='label+percent', texttemplate='%{label}<br>%{text}<br>(%{percent})')])
+                                fig_qm = go.Figure(data=[go.Pie(
+                                    labels=df_q[col_quem], 
+                                    values=df_q["Valor_Mes"], 
+                                    text=df_q["Valor_Fmt"], 
+                                    customdata=df_q["Percentual"],
+                                    textinfo='label+percent', 
+                                    texttemplate='%{label}<br>%{text}<br>(%{customdata}%)'
+                                )])
                                 st.plotly_chart(fig_qm, use_container_width=True)
                             else:
                                 st.info("Nenhum dado de quem gastou neste mês.")
@@ -438,9 +460,20 @@ with aba2:
                         if col_cat:
                             df_cat_ano = df.groupby(col_cat, as_index=False)["Valor_Num"].sum()
                             df_cat_ano["Valor_Num"] = pd.to_numeric(df_cat_ano["Valor_Num"])
+                            
+                            # Cálculo matemático exato da porcentagem real
+                            total_cat_ano = df_cat_ano["Valor_Num"].sum()
+                            df_cat_ano["Percentual"] = (df_cat_ano["Valor_Num"] / total_cat_ano * 100).round(2)
                             df_cat_ano["Valor_Fmt"] = df_cat_ano["Valor_Num"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                             
-                            fig_ca = go.Figure(data=[go.Pie(labels=df_cat_ano[col_cat], values=df_cat_ano["Valor_Num"], text=df_cat_ano["Valor_Fmt"], textinfo='label+percent', texttemplate='%{label}<br>%{text}<br>(%{percent})')])
+                            fig_ca = go.Figure(data=[go.Pie(
+                                labels=df_cat_ano[col_cat], 
+                                values=df_cat_ano["Valor_Num"], 
+                                text=df_cat_ano["Valor_Fmt"], 
+                                customdata=df_cat_ano["Percentual"],
+                                textinfo='label+percent', 
+                                texttemplate='%{label}<br>%{text}<br>(%{customdata}%)'
+                            )])
                             st.plotly_chart(fig_ca, use_container_width=True)
                             
                     with col_a2:
@@ -448,9 +481,20 @@ with aba2:
                         if col_quem:
                             df_quem_ano = df.groupby(col_quem, as_index=False)["Valor_Num"].sum()
                             df_quem_ano["Valor_Num"] = pd.to_numeric(df_quem_ano["Valor_Num"])
+                            
+                            # Cálculo matemático exato da porcentagem real
+                            total_quem_ano = df_quem_ano["Valor_Num"].sum()
+                            df_quem_ano["Percentual"] = (df_quem_ano["Valor_Num"] / total_quem_ano * 100).round(2)
                             df_quem_ano["Valor_Fmt"] = df_quem_ano["Valor_Num"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                             
-                            fig_qa = go.Figure(data=[go.Pie(labels=df_quem_ano[col_quem], values=df_quem_ano["Valor_Num"], text=df_quem_ano["Valor_Fmt"], textinfo='label+percent', texttemplate='%{label}<br>%{text}<br>(%{percent})')])
+                            fig_qa = go.Figure(data=[go.Pie(
+                                labels=df_quem_ano[col_quem], 
+                                values=df_quem_ano["Valor_Num"], 
+                                text=df_quem_ano["Valor_Fmt"], 
+                                customdata=df_quem_ano["Percentual"],
+                                textinfo='label+percent', 
+                                texttemplate='%{label}<br>%{text}<br>(%{customdata}%)'
+                            )])
                             st.plotly_chart(fig_qa, use_container_width=True)
 
                 # ==========================================
