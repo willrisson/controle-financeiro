@@ -376,7 +376,6 @@ with aba2:
 
                 df["Valor_Num"] = df[col_valor].apply(converter_valor_limpo).astype(float)
                 
-                # Identifica colunas de meses/parcelamentos (à direita)
                 colunas_meses = [c for c in df.columns if "/" in c or any(m in c.lower() for m in ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"])]
 
                 sub_aba1, sub_aba2, sub_aba3 = st.tabs(["📅 Balanço Mensal", "🌐 Balanço Anual", "💳 Controle de Parcelamentos"])
@@ -402,7 +401,9 @@ with aba2:
                             st.markdown("#### Gastos por Categoria (Mês)")
                             if col_cat and not df_mes_filtrado.empty:
                                 df_c = df_mes_filtrado.groupby(col_cat, as_index=False)["Valor_Mes"].sum()
+                                df_c["Valor_Mes"] = df_c["Valor_Mes"].astype(float)
                                 df_c["Valor_Fmt"] = df_c["Valor_Mes"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                                
                                 fig_cm = px.pie(df_c, names=col_cat, values="Valor_Mes", custom_data=["Valor_Fmt"])
                                 fig_cm.update_traces(textinfo='label+percent', texttemplate='%{label}<br>%{customdata[0]}<br>(%{percent})')
                                 st.plotly_chart(fig_cm, use_container_width=True)
@@ -413,7 +414,9 @@ with aba2:
                             st.markdown("#### Quem Gastou Mais (Mês)")
                             if col_quem and not df_mes_filtrado.empty:
                                 df_q = df_mes_filtrado.groupby(col_quem, as_index=False)["Valor_Mes"].sum()
+                                df_q["Valor_Mes"] = df_q["Valor_Mes"].astype(float)
                                 df_q["Valor_Fmt"] = df_q["Valor_Mes"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                                
                                 fig_qm = px.pie(df_q, names=col_quem, values="Valor_Mes", custom_data=["Valor_Fmt"])
                                 fig_qm.update_traces(textinfo='label+percent', texttemplate='%{label}<br>%{customdata[0]}<br>(%{percent})')
                                 st.plotly_chart(fig_qm, use_container_width=True)
@@ -436,7 +439,9 @@ with aba2:
                         st.markdown("#### Gastos por Categoria (Anual)")
                         if col_cat:
                             df_cat_ano = df.groupby(col_cat, as_index=False)["Valor_Num"].sum()
+                            df_cat_ano["Valor_Num"] = df_cat_ano["Valor_Num"].astype(float)
                             df_cat_ano["Valor_Fmt"] = df_cat_ano["Valor_Num"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                            
                             fig_ca = px.pie(df_cat_ano, names=col_cat, values="Valor_Num", custom_data=["Valor_Fmt"])
                             fig_ca.update_traces(textinfo='label+percent', texttemplate='%{label}<br>%{customdata[0]}<br>(%{percent})')
                             st.plotly_chart(fig_ca, use_container_width=True)
@@ -445,7 +450,9 @@ with aba2:
                         st.markdown("#### Quem Gastou Mais (Anual)")
                         if col_quem:
                             df_quem_ano = df.groupby(col_quem, as_index=False)["Valor_Num"].sum()
+                            df_quem_ano["Valor_Num"] = df_quem_ano["Valor_Num"].astype(float)
                             df_quem_ano["Valor_Fmt"] = df_quem_ano["Valor_Num"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                            
                             fig_qa = px.pie(df_quem_ano, names=col_quem, values="Valor_Num", custom_data=["Valor_Fmt"])
                             fig_qa.update_traces(textinfo='label+percent', texttemplate='%{label}<br>%{customdata[0]}<br>(%{percent})')
                             st.plotly_chart(fig_qa, use_container_width=True)
