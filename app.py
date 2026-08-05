@@ -372,7 +372,7 @@ with aba2:
                     except:
                         return 0.0
 
-                df["Valor_Num"] = df[col_valor].apply(converter_valor_limpo)
+                df["Valor_Num"] = df[col_valor].apply(converter_valor_limpo).astype(float)
                 total_geral = df["Valor_Num"].sum()
                 
                 total_fmt = f"R$ {total_geral:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
@@ -381,11 +381,9 @@ with aba2:
 
             st.markdown("### 📈 Visualização de Gastos")
             if col_cat and "Valor_Num" in df.columns:
-                # Cria um novo DataFrame estrito apenas com Categoria e o Valor Numérico somado
+                # Agrupa e converte explicitamente para float nativo do Python
                 df_grouped = df.groupby(col_cat, as_index=False)["Valor_Num"].sum()
-                
-                # Garante explicitamente que a coluna de valores é float pura
-                df_grouped["Valor_Num"] = pd.to_numeric(df_grouped["Valor_Num"])
+                df_grouped["Valor_Num"] = df_grouped["Valor_Num"].astype(float)
                 
                 fig = px.pie(
                     df_grouped, 
