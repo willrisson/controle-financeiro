@@ -11,8 +11,9 @@ scopes = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-creds_info = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
-creds = Credentials.from_service_account_info(creds_info, scopes=scopes)
+# Lê o dicionário padrão do gcp_service_account que está nos Secrets
+creds_dict = dict(st.secrets["gcp_service_account"])
+creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
 client = gspread.authorize(creds)
 
 # --- CONFIGURAÇÃO ---
