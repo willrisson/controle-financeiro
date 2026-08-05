@@ -358,14 +358,12 @@ with aba2:
             dados_linhas = rows[1:]
             df = pd.DataFrame(dados_linhas, columns=cabecalho)
             
-            # Limpeza e conversão exata da coluna Valor
+            # Limpeza e conversão exata da coluna Valor para numérica
             if "Valor" in df.columns:
                 def converter_valor_limpo(val):
                     if not val:
                         return 0.0
-                    # Remove R$, espaços e padroniza para float padrão do Python
                     val_str = str(val).replace("R$", "").replace(" ", "").strip()
-                    # Se tiver vírgula, substitui por ponto decimal e remove pontos de milhar
                     if "," in val_str:
                         val_str = val_str.replace(".", "").replace(",", ".")
                     try:
@@ -383,8 +381,10 @@ with aba2:
 
             st.markdown("### 📈 Visualização de Gastos")
             if "Categoria" in df.columns and "Valor_Num" in df.columns:
+                # Agrupa rigorosamente usando a coluna numérica correta (Valor_Num)
                 df_grouped = df.groupby("Categoria", as_index=False)["Valor_Num"].sum()
                 
+                # Gera o gráfico utilizando values="Valor_Num"
                 fig = px.pie(df_grouped, names="Categoria", values="Valor_Num", title="Gastos Totais por Categoria")
                 fig.update_traces(
                     textinfo='label+value+percent', 
