@@ -400,8 +400,8 @@ with aba2:
                         with col_m1:
                             st.markdown("#### Gastos por Categoria (Mês)")
                             if col_cat and not df_mes_filtrado.empty:
-                                df_c = df_mes_filtrado.groupby(col_cat)["Valor_Mes"].sum().reset_index()
-                                df_c["Valor_Mes"] = df_c["Valor_Mes"].astype(float)
+                                df_c = df_mes_filtrado.groupby(col_cat, as_index=False)["Valor_Mes"].sum()
+                                df_c["Valor_Mes"] = pd.to_numeric(df_c["Valor_Mes"])
                                 df_c["Valor_Fmt"] = df_c["Valor_Mes"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                                 
                                 fig_cm = px.pie(df_c, names=col_cat, values="Valor_Mes", custom_data=["Valor_Fmt"])
@@ -413,8 +413,8 @@ with aba2:
                         with col_m2:
                             st.markdown("#### Quem Gastou Mais (Mês)")
                             if col_quem and not df_mes_filtrado.empty:
-                                df_q = df_mes_filtrado.groupby(col_quem)["Valor_Mes"].sum().reset_index()
-                                df_q["Valor_Mes"] = df_q["Valor_Mes"].astype(float)
+                                df_q = df_mes_filtrado.groupby(col_quem, as_index=False)["Valor_Mes"].sum()
+                                df_q["Valor_Mes"] = pd.to_numeric(df_q["Valor_Mes"])
                                 df_q["Valor_Fmt"] = df_q["Valor_Mes"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                                 
                                 fig_qm = px.pie(df_q, names=col_quem, values="Valor_Mes", custom_data=["Valor_Fmt"])
@@ -438,8 +438,8 @@ with aba2:
                     with col_a1:
                         st.markdown("#### Gastos por Categoria (Anual)")
                         if col_cat:
-                            df_cat_ano = df.groupby(col_cat)["Valor_Num"].sum().reset_index()
-                            df_cat_ano["Valor_Num"] = df_cat_ano["Valor_Num"].astype(float)
+                            df_cat_ano = df.groupby(col_cat, as_index=False)["Valor_Num"].sum()
+                            df_cat_ano["Valor_Num"] = pd.to_numeric(df_cat_ano["Valor_Num"])
                             df_cat_ano["Valor_Fmt"] = df_cat_ano["Valor_Num"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                             
                             fig_ca = px.pie(df_cat_ano, names=col_cat, values="Valor_Num", custom_data=["Valor_Fmt"])
@@ -449,8 +449,8 @@ with aba2:
                     with col_a2:
                         st.markdown("#### Quem Gastou Mais (Anual)")
                         if col_quem:
-                            df_quem_ano = df.groupby(col_quem)["Valor_Num"].sum().reset_index()
-                            df_quem_ano["Valor_Num"] = df_quem_ano["Valor_Num"].astype(float)
+                            df_quem_ano = df.groupby(col_quem, as_index=False)["Valor_Num"].sum()
+                            df_quem_ano["Valor_Num"] = pd.to_numeric(df_quem_ano["Valor_Num"])
                             df_quem_ano["Valor_Fmt"] = df_quem_ano["Valor_Num"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                             
                             fig_qa = px.pie(df_quem_ano, names=col_quem, values="Valor_Num", custom_data=["Valor_Fmt"])
