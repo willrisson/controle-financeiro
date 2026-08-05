@@ -355,21 +355,35 @@ with aba2:
         if dados:
             df = pd.DataFrame(dados)
             
-            # Converte a coluna de valor para número para garantir os cálculos corretos
+            # Função para limpar e converter valores salvos como texto com vírgula/ponto
             if "Valor" in df.columns:
-                df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce").fillna(0.0)
-                total_geral = df["Valor"].sum()
+                def limpar_valor(val):
+                    if pd.isna(val):
+                        return 0.0
+                    val_str = str(val).replace("R$", "").replace(" ", "").strip()
+                    # Se tiver vírgula e ponto, assume formato brasileiro (ex: 1.234,56)
+                    if "," in val_str and "." in val_str:
+                        val_str = val_str.replace(".", "").replace(",", ".")
+                    elif "," in val_str:
+                        val_str = val_str.replace(",", ".")
+                    try:
+                        return float(val_str)
+                    except:
+                        return 0.0
+
+                df["Valor_Num"] = df["Valor"].apply(limpar_valor)
+                total_geral = df["Valor_Num"].sum()
                 
-                # Exibe o card com o Valor Total Geral
+                # Exibe o card com o Valor Total Geral correto
                 st.metric(label="💰 Total Geral de Despesas", value=f"R$ {total_geral:,.2f}")
                 st.markdown("---")
 
             st.markdown("### 📈 Visualização de Gastos")
-            if "Categoria" in df.columns and "Valor" in df.columns:
-                # Agrupa os valores por categoria para o gráfico somar corretamente
-                df_grouped = df.groupby("Categoria", as_index=False)["Valor"].sum()
+            if "Categoria" in df.columns and "Valor_Num" in df.columns:
+                # Agrupa usando a coluna numérica limpa
+                df_grouped = df.groupby("Categoria", as_index=False)["Valor_Num"].sum()
                 
-                fig = px.pie(df_grouped, names="Categoria", values="Valor", title="Gastos Totais por Categoria")
+                fig = px.pie(df_grouped, names="Categoria", values="Valor_Num", title="Gastos Totais por Categoria")
                 fig.update_traces(
                     textinfo='label+value+percent', 
                     texttemplate='%{label}<br>R$ %{value:,.2f}<br>(%{percent})'
