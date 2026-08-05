@@ -379,7 +379,6 @@ with aba2:
                 # Identifica colunas de meses/parcelamentos (à direita)
                 colunas_meses = [c for c in df.columns if "/" in c or any(m in c.lower() for m in ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"])]
 
-                # CRIANDO SUB-ABAS PARA ORGANIZAR TUDO SEM PESAR O APP
                 sub_aba1, sub_aba2, sub_aba3 = st.tabs(["📅 Balanço Mensal", "🌐 Balanço Anual", "💳 Controle de Parcelamentos"])
 
                 # ==========================================
@@ -391,9 +390,7 @@ with aba2:
                         mes_selecionado = st.selectbox("Escolha o mês:", colunas_meses, key="select_mes")
                         
                         df_mes = df.copy()
-                        def conv_mes(val):
-                            return converter_valor_limpo(val)
-                        df_mes["Valor_Mes"] = df_mes[mes_selecionado].apply(conv_mes)
+                        df_mes["Valor_Mes"] = df_mes[mes_selecionado].apply(converter_valor_limpo).astype(float)
                         df_mes_filtrado = df_mes[df_mes["Valor_Mes"] > 0]
                         
                         total_mes = df_mes_filtrado["Valor_Mes"].sum()
@@ -461,7 +458,6 @@ with aba2:
                     st.write("Aqui você visualiza todas as linhas de despesas que possuem desdobramentos nas colunas de meses à direita.")
                     
                     if colunas_meses:
-                        # Exibe uma tabela focada nas descrições e nas colunas de meses/parcelas
                         colunas_parcelas_view = [col_desc, col_cat, col_quem] + colunas_meses
                         colunas_existentes = [c for c in colunas_parcelas_view if c and c in df.columns]
                         
