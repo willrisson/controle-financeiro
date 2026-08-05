@@ -335,6 +335,42 @@ with aba1:
                 st.session_state["form_limpo"] = True
                 st.session_state["processando_envio"] = False
                 st.rerun()
+import streamlit as st
+import pandas as pd
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+import plotly.express as px
+import plotly.graph_objects as go  # Importação corrigida aqui!
+
+# Configuração da Página
+st.set_page_config(page_title="Controle Financeiro Familiar", page_icon="💰", layout="wide")
+
+# Configurações do Google Sheets
+SPREADSHEET_ID = "1m8bs297sytwdnfvuhsjht"
+NOME_ABA = "Página1"
+
+def get_gspread_client():
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    credentials_dict = dict(st.secrets["gcp_service_account"])
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+    client = gspread.authorize(creds)
+    return client
+
+st.markdown("<h1 style='text-align: center;'>💰 Painel de Controle Financeiro</h1>", unsafe_allow_html=True)
+
+# Abas Principais
+aba1, aba2 = st.tabs(["🚀 Lançar Gasto", "📊 Gráficos por Mês"])
+
+# ==========================================
+# ABA 1: LANÇAR GASTO (Mantida como está)
+# ==========================================
+with aba1:
+    st.markdown("### Lançamento de Gastos via Telegram ou Manual")
+    st.info("Utilize o bot do Telegram para lançamentos automáticos ou preencha a planilha diretamente.")
+
 # ==========================================
 # ABA 2: GRÁFICOS E ANÁLISES FINANCEIRAS
 # ==========================================
@@ -400,12 +436,11 @@ with aba2:
                         with col_m1:
                             st.markdown("#### Gastos por Categoria (Mês)")
                             if col_cat and not df_mes_filtrado.empty:
-                                df_c = df_mes_filtrado.groupby(col_cat)["Valor_Mes"].sum().reset_index()
-                                labels_c = df_c[col_cat].tolist()
-                                values_c = df_c["Valor_Mes"].astype(float).tolist()
-                                text_c = [f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") for v in values_c]
+                                df_c = df_mes_filtrado.groupby(col_cat, as_index=False)["Valor_Mes"].sum()
+                                df_c["Valor_Mes"] = pd.to_numeric(df_c["Valor_Mes"])
+                                df_c["Valor_Fmt"] = df_c["Valor_Mes"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                                 
-                                fig_cm = go.Figure(data=[go.Pie(labels=labels_c, values=values_c, text=text_c, textinfo='label+percent', texttemplate='%{label}<br>%{text}<br>(%{percent})')])
+                                fig_cm = go.Figure(data=[go.Pie(labels=df_c[col_cat], values=df_c["Valor_Mes"], text=df_c["Valor_Fmt"], textinfo='label+percent', texttemplate='%{label}<br>%{text}<br>(%{percent})')])
                                 st.plotly_chart(fig_cm, use_container_width=True)
                             else:
                                 st.info("Nenhum gasto neste mês.")
@@ -413,12 +448,11 @@ with aba2:
                         with col_m2:
                             st.markdown("#### Quem Gastou Mais (Mês)")
                             if col_quem and not df_mes_filtrado.empty:
-                                df_q = df_mes_filtrado.groupby(col_quem)["Valor_Mes"].sum().reset_index()
-                                labels_q = df_q[col_quem].tolist()
-                                values_q = df_q["Valor_Mes"].astype(float).tolist()
-                                text_q = [f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") for v in values_q]
+                                df_q = df_mes_filtrado.groupby(col_quem, as_index=False)["Valor_Mes"].sum()
+                                df_q["Valor_Mes"] = pd.to_numeric(df_q["Valor_Mes"])
+                                df_q["Valor_Fmt"] = df_q["Valor_Mes"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                                 
-                                fig_qm = go.Figure(data=[go.Pie(labels=labels_q, values=values_q, text=text_q, textinfo='label+percent', texttemplate='%{label}<br>%{text}<br>(%{percent})')])
+                                fig_qm = go.Figure(data=[go.Pie(labels=df_q[col_quem], values=df_q["Valor_Mes"], text=df_q["Valor_Fmt"], textinfo='label+percent', texttemplate='%{label}<br>%{text}<br>(%{percent})')])
                                 st.plotly_chart(fig_qm, use_container_width=True)
                             else:
                                 st.info("Nenhum dado de quem gastou neste mês.")
@@ -438,23 +472,21 @@ with aba2:
                     with col_a1:
                         st.markdown("#### Gastos por Categoria (Anual)")
                         if col_cat:
-                            df_cat_ano = df.groupby(col_cat)["Valor_Num"].sum().reset_index()
-                            labels_ca = df_cat_ano[col_cat].tolist()
-                            values_ca = df_cat_ano["Valor_Num"].astype(float).tolist()
-                            text_ca = [f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") for v in values_ca]
+                            df_cat_ano = df.groupby(col_cat, as_index=False)["Valor_Num"].sum()
+                            df_cat_ano["Valor_Num"] = pd.to_numeric(df_cat_ano["Valor_Num"])
+                            df_cat_ano["Valor_Fmt"] = df_cat_ano["Valor_Num"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                             
-                            fig_ca = go.Figure(data=[go.Pie(labels=labels_ca, values=values_ca, text=text_ca, textinfo='label+percent', texttemplate='%{label}<br>%{text}<br>(%{percent})')])
+                            fig_ca = go.Figure(data=[go.Pie(labels=df_cat_ano[col_cat], values=df_cat_ano["Valor_Num"], text=df_cat_ano["Valor_Fmt"], textinfo='label+percent', texttemplate='%{label}<br>%{text}<br>(%{percent})')])
                             st.plotly_chart(fig_ca, use_container_width=True)
                             
                     with col_a2:
                         st.markdown("#### Quem Gastou Mais (Anual)")
                         if col_quem:
-                            df_quem_ano = df.groupby(col_quem)["Valor_Num"].sum().reset_index()
-                            labels_qa = df_quem_ano[col_quem].tolist()
-                            values_qa = df_quem_ano["Valor_Num"].astype(float).tolist()
-                            text_qa = [f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") for v in values_qa]
+                            df_quem_ano = df.groupby(col_quem, as_index=False)["Valor_Num"].sum()
+                            df_quem_ano["Valor_Num"] = pd.to_numeric(df_quem_ano["Valor_Num"])
+                            df_quem_ano["Valor_Fmt"] = df_quem_ano["Valor_Num"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                             
-                            fig_qa = go.Figure(data=[go.Pie(labels=labels_qa, values=values_qa, text=text_qa, textinfo='label+percent', texttemplate='%{label}<br>%{text}<br>(%{percent})')])
+                            fig_qa = go.Figure(data=[go.Pie(labels=df_quem_ano[col_quem], values=df_quem_ano["Valor_Num"], text=df_quem_ano["Valor_Fmt"], textinfo='label+percent', texttemplate='%{label}<br>%{text}<br>(%{percent})')])
                             st.plotly_chart(fig_qa, use_container_width=True)
 
                 # ==========================================
