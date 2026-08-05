@@ -388,6 +388,7 @@ with aba2:
                         with col_m1:
                             st.markdown("#### Gastos por Categoria (Mês)")
                             if col_cat and not df_mes_filtrado.empty:
+                                # Agrupando explicitamente para somar o valor em dinheiro de cada categoria
                                 df_c = df_mes_filtrado.groupby(col_cat, as_index=False)["Valor_Mes"].sum()
                                 df_c["Valor_Mes"] = pd.to_numeric(df_c["Valor_Mes"], errors='coerce').fillna(0)
                                 df_c = df_c[df_c["Valor_Mes"] > 0]
@@ -396,7 +397,7 @@ with aba2:
                                     fig_cm = px.pie(
                                         df_c, 
                                         names=col_cat, 
-                                        values="Valor_Mes",
+                                        values="Valor_Mes", # Força o uso da coluna de soma financeira
                                         hole=0.4,
                                         template="plotly_white"
                                     )
@@ -418,6 +419,7 @@ with aba2:
                         with col_m2:
                             st.markdown("#### Quem Gastou Mais (Mês)")
                             if col_quem and not df_mes_filtrado.empty:
+                                # Agrupando explicitamente para somar o valor em dinheiro de cada pessoa
                                 df_q = df_mes_filtrado.groupby(col_quem, as_index=False)["Valor_Mes"].sum()
                                 df_q["Valor_Mes"] = pd.to_numeric(df_q["Valor_Mes"], errors='coerce').fillna(0)
                                 df_q = df_q[df_q["Valor_Mes"] > 0]
@@ -426,7 +428,7 @@ with aba2:
                                     fig_qm = px.pie(
                                         df_q, 
                                         names=col_quem, 
-                                        values="Valor_Mes",
+                                        values="Valor_Mes", # Força o uso da coluna de soma financeira
                                         hole=0.4,
                                         template="plotly_white"
                                     )
@@ -460,6 +462,7 @@ with aba2:
                     with col_a1:
                         st.markdown("#### Gastos por Categoria (Anual)")
                         if col_cat:
+                            # Agrupando explicitamente a soma total do ano por categoria
                             df_cat_ano = df.groupby(col_cat, as_index=False)["Valor_Num"].sum()
                             df_cat_ano["Valor_Num"] = pd.to_numeric(df_cat_ano["Valor_Num"], errors='coerce').fillna(0)
                             df_cat_ano = df_cat_ano[df_cat_ano["Valor_Num"] > 0]
@@ -468,7 +471,7 @@ with aba2:
                                 fig_ca = px.pie(
                                     df_cat_ano, 
                                     names=col_cat, 
-                                    values="Valor_Num",
+                                    values="Valor_Num", # Força o somatório em reais
                                     hole=0.4,
                                     template="plotly_white"
                                 )
@@ -488,6 +491,7 @@ with aba2:
                     with col_a2:
                         st.markdown("#### Quem Gastou Mais (Anual)")
                         if col_quem:
+                            # Agrupando explicitamente a soma total do ano por pessoa
                             df_quem_ano = df.groupby(col_quem, as_index=False)["Valor_Num"].sum()
                             df_quem_ano["Valor_Num"] = pd.to_numeric(df_quem_ano["Valor_Num"], errors='coerce').fillna(0)
                             df_quem_ano = df_quem_ano[df_quem_ano["Valor_Num"] > 0]
@@ -496,7 +500,7 @@ with aba2:
                                 fig_qa = px.pie(
                                     df_quem_ano, 
                                     names=col_quem, 
-                                    values="Valor_Num",
+                                    values="Valor_Num", # Força o somatório em reais
                                     hole=0.4,
                                     template="plotly_white"
                                 )
