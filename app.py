@@ -540,8 +540,125 @@ with tab_dashboard:
         mes_atual_str = obter_nome_mes_ano(data_hoje)
         ano_atual = data_hoje.year
 
-        df_mes = df_fluxo[df_fluxo["Mês/Ano"] == mes_atual_str].copy()
-        df_ano = df_fluxo[df_fluxo["Ano"] == ano_atual].copy()
+        meses_ordem = {
+            1: "Janeiro",
+            2: "Fevereiro",
+            3: "Março",
+            4: "Abril",
+            5: "Maio",
+            6: "Junho",
+            7: "Julho",
+            8: "Agosto",
+            9: "Setembro",
+            10: "Outubro",
+            11: "Novembro",
+            12: "Dezembro",
+        }
+
+        anos_disponiveis = sorted(
+            df_fluxo["Ano"].dropna().astype(int).unique().tolist(),
+            reverse=True,
+        )
+
+        if ano_atual not in anos_disponiveis:
+            anos_disponiveis.insert(0, ano_atual)
+
+        with st.expander("🔎 Filtros do Dashboard", expanded=False):
+            ano_selecionado = st.selectbox(
+                "Ano",
+                anos_disponiveis,
+                index=anos_disponiveis.index(ano_atual)
+                if ano_atual in anos_disponiveis
+                else 0,
+                key="dashboard_ano",
+            )
+
+            meses_disponiveis_num = sorted(
+                df_fluxo.loc[
+                    df_fluxo["Ano"] == ano_selecionado,
+                    "Mês Número",
+                ]
+                .dropna()
+                .astype(int)
+                .unique()
+                .tolist()
+            )
+
+            mes_atual_num = data_hoje.month
+
+            if mes_atual_num not in meses_disponiveis_num:
+                meses_disponiveis_num.append(mes_atual_num)
+                meses_disponiveis_num = sorted(
+                    set(meses_disponiveis_num)
+                )
+
+            nomes_meses_disponiveis = [
+                meses_ordem[numero]
+                for numero in meses_disponiveis_num
+            ]
+
+            indice_mes_padrao = (
+                meses_disponiveis_num.index(mes_atual_num)
+                if mes_atual_num in meses_disponiveis_num
+                else 0
+            )
+
+            mes_nome_selecionado = st.selectbox(
+                "Mês",
+                nomes_meses_disponiveis,
+                index=indice_mes_padrao,
+                key="dashboard_mes",
+            )
+
+            pessoas_disponiveis = sorted(
+                df_fluxo["Pessoa"].dropna().astype(str).unique().tolist()
+            )
+            categorias_disponiveis = sorted(
+                df_fluxo["Categoria"].dropna().astype(str).unique().tolist()
+            )
+
+            pessoa_selecionada = st.selectbox(
+                "Pessoa",
+                ["Todas"] + pessoas_disponiveis,
+                key="dashboard_pessoa",
+            )
+
+            categoria_selecionada = st.selectbox(
+                "Categoria",
+                ["Todas"] + categorias_disponiveis,
+                key="dashboard_categoria",
+            )
+
+        numero_mes_selecionado = next(
+            numero
+            for numero, nome in meses_ordem.items()
+            if nome == mes_nome_selecionado
+        )
+
+        mes_selecionado_str = (
+            f"{mes_nome_selecionado}/{ano_selecionado}"
+        )
+
+        df_filtrado = df_fluxo.copy()
+
+        if pessoa_selecionada != "Todas":
+            df_filtrado = df_filtrado[
+                df_filtrado["Pessoa"] == pessoa_selecionada
+            ]
+
+        if categoria_selecionada != "Todas":
+            df_filtrado = df_filtrado[
+                df_filtrado["Categoria"] == categoria_selecionada
+            ]
+
+        df_mes = df_filtrado[
+            (df_filtrado["Ano"] == ano_selecionado)
+            & (df_filtrado["Mês Número"] == numero_mes_selecionado)
+        ].copy()
+
+        df_ano = df_filtrado[
+            df_filtrado["Ano"] == ano_selecionado
+        ].copy()
 
         total_mes = df_mes["Valor Desembolsado"].sum()
         total_ano = df_ano["Valor Desembolsado"].sum()
@@ -573,29 +690,27 @@ with tab_dashboard:
             st.metric("📅 Total Ano", formatar_moeda(total_ano))
 
         with col3:
-            st.metric("📆 Mês de Referência", mes_atual_str)
+            st.metric("📆 Mês de Referência", mes_selecionado_str)
 
         st.markdown("---")
-        st.subheader(f"📊 Gastos por Categoria – {mes_atual_str}")
+        st.subheader(f"📊 Gastos por Categoria – {mes_selecionado_str}")
 
         if resumo_mes_categoria.empty:
-            st.info(f"Nenhum gasto registrado em {mes_atual_str}.")
+            st.info(f"Nenhum gasto registrado em {mes_selecionado_str}.")
         else:
             fig1 = go.Figure(
                 data=[
                     go.Pie(
-                        labels=resumo_mes_categoria["Categoria"],
-                        values=resumo_mes_categoria["Valor Desembolsado"],
+                        labels=resumo_mes_categoria["Categoria"].astype(str).tolist(),
+                        values=[float(v) for v in resumo_mes_categoria["Valor Desembolsado"].tolist()],
                         hole=0.35,
                         sort=False,
                         direction="clockwise",
                         textinfo="label+percent",
-                        customdata=resumo_mes_categoria[
-                            "Valor Desembolsado"
-                        ],
+                        customdata=[[float(v)] for v in resumo_mes_categoria["Valor Desembolsado"].tolist()],
                         hovertemplate=(
                             "<b>%{label}</b><br>"
-                            "Valor: R$ %{customdata:,.2f}<br>"
+                            "Valor: R$ %{customdata[0]:,.2f}<br>"
                             "Percentual: %{percent}"
                             "<extra></extra>"
                         ),
@@ -612,7 +727,7 @@ with tab_dashboard:
                     y=-0.20,
                 ),
                 margin=dict(t=60, b=80, l=20, r=20),
-                height=500,
+                height=420,
             )
 
             st.plotly_chart(fig1, use_container_width=True)
@@ -634,7 +749,7 @@ with tab_dashboard:
             )
 
         st.markdown("---")
-        st.subheader(f"👥 Gastos por Pessoa – {mes_atual_str}")
+        st.subheader(f"👥 Gastos por Pessoa – {mes_selecionado_str}")
 
         if resumo_mes_pessoa.empty:
             st.info("Nenhum gasto por pessoa neste mês.")
@@ -642,18 +757,16 @@ with tab_dashboard:
             fig2 = go.Figure(
                 data=[
                     go.Pie(
-                        labels=resumo_mes_pessoa["Pessoa"],
-                        values=resumo_mes_pessoa["Valor Desembolsado"],
+                        labels=resumo_mes_pessoa["Pessoa"].astype(str).tolist(),
+                        values=[float(v) for v in resumo_mes_pessoa["Valor Desembolsado"].tolist()],
                         hole=0.35,
                         sort=False,
                         direction="clockwise",
                         textinfo="label+percent",
-                        customdata=resumo_mes_pessoa[
-                            "Valor Desembolsado"
-                        ],
+                        customdata=[[float(v)] for v in resumo_mes_pessoa["Valor Desembolsado"].tolist()],
                         hovertemplate=(
                             "<b>%{label}</b><br>"
-                            "Valor: R$ %{customdata:,.2f}<br>"
+                            "Valor: R$ %{customdata[0]:,.2f}<br>"
                             "Percentual: %{percent}"
                             "<extra></extra>"
                         ),
@@ -670,7 +783,7 @@ with tab_dashboard:
                     y=-0.20,
                 ),
                 margin=dict(t=60, b=80, l=20, r=20),
-                height=500,
+                height=420,
             )
 
             st.plotly_chart(fig2, use_container_width=True)
@@ -692,28 +805,24 @@ with tab_dashboard:
             )
 
         st.markdown("---")
-        st.subheader(f"📅 Gastos Anuais por Categoria – {ano_atual}")
+        st.subheader(f"📅 Gastos Anuais por Categoria – {ano_selecionado}")
 
         if resumo_ano_categoria.empty:
-            st.info(f"Nenhum gasto registrado em {ano_atual}.")
+            st.info(f"Nenhum gasto registrado em {ano_selecionado}.")
         else:
             fig3 = go.Figure(
                 data=[
                     go.Pie(
-                        labels=resumo_ano_categoria["Categoria"],
-                        values=resumo_ano_categoria[
-                            "Valor Desembolsado"
-                        ],
+                        labels=resumo_ano_categoria["Categoria"].astype(str).tolist(),
+                        values=[float(v) for v in resumo_ano_categoria["Valor Desembolsado"].tolist()],
                         hole=0.35,
                         sort=False,
                         direction="clockwise",
                         textinfo="label+percent",
-                        customdata=resumo_ano_categoria[
-                            "Valor Desembolsado"
-                        ],
+                        customdata=[[float(v)] for v in resumo_ano_categoria["Valor Desembolsado"].tolist()],
                         hovertemplate=(
                             "<b>%{label}</b><br>"
-                            "Valor: R$ %{customdata:,.2f}<br>"
+                            "Valor: R$ %{customdata[0]:,.2f}<br>"
                             "Percentual: %{percent}"
                             "<extra></extra>"
                         ),
@@ -730,7 +839,7 @@ with tab_dashboard:
                     y=-0.20,
                 ),
                 margin=dict(t=60, b=80, l=20, r=20),
-                height=520,
+                height=440,
             )
 
             st.plotly_chart(fig3, use_container_width=True)
