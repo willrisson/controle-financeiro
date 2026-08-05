@@ -6,6 +6,14 @@ import json
 import time
 from datetime import datetime
 
+scopes = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+]
+creds_dict = dict(st.secrets["gcp_service_account"])
+creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+client = gspread.authorize(creds)
+
 # --- CONFIGURAÇÃO ---
 st.set_page_config(page_title="Controle Financeiro Familiar", page_icon="💳", layout="centered")
 
