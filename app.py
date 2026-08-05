@@ -355,13 +355,19 @@ with aba2:
         if dados:
             df = pd.DataFrame(dados)
             
-            # Conversão corrigida para o formato numérico brasileiro (ex: "100,00" -> 100.0)
+            # Conversão robusta para o formato brasileiro da planilha
             if "Valor" in df.columns:
                 def converter_para_float(val):
-                    try:
-                        val_str = str(val).replace("R$", "").strip()
-                        # Remove pontos de milhar e troca vírgula decimal por ponto
+                    if pd.isna(val):
+                        return 0.0
+                    if isinstance(val, (int, float)):
+                        return float(val)
+                    
+                    val_str = str(val).replace("R$", "").strip()
+                    # Remove pontos de milhar e substitui vírgula por ponto decimal
+                    if "," in val_str:
                         val_str = val_str.replace(".", "").replace(",", ".")
+                    try:
                         return float(val_str)
                     except:
                         return 0.0
