@@ -342,6 +342,7 @@ with tab_lancamento:
 # ============================================================
 # DASHBOARD (tudo novo a partir daqui)
 # ============================================================
+
 with tab_dashboard:
     st.markdown("### 📈 Visão Geral dos Gastos")
 
@@ -352,232 +353,417 @@ with tab_dashboard:
             sh = client.open_by_key(SPREADSHEET_ID)
             worksheet = sh.worksheet(NOME_ABA)
             valores = worksheet.get_all_values()
+
             if not valores or len(valores) < 2:
-                return None, None
+                return pd.DataFrame()
+
             cabecalho = valores[0]
             dados = valores[1:]
-            return cabecalho, dados
+
+            # Completa linhas curtas para evitar desalinhamento.
+            dados_normalizados = [
+                linha + [""] * (len(cabecalho) - len(linha))
+                for linha in dados
+            ]
+
+            return pd.DataFrame(dados_normalizados, columns=cabecalho)
+
         except Exception as e:
             st.error(f"Erro ao carregar dados: {e}")
-            return None, None
+            return pd.DataFrame()
 
-    cabecalho, dados = carregar_dados_planilha()
+    def converter_valor_planilha(valor):
+        """
+        Converte corretamente valores vindos do Google Sheets:
+        1234.56
+        1234,56
+        1.234,56
+        R$ 1.234,56
+        """
+        if valor is None:
+            return 0.0
 
-    if cabecalho is None or dados is None:
+        if isinstance(valor, (int, float)):
+            return float(valor)
+
+        texto = str(valor).strip()
+
+        if not texto:
+            return 0.0
+
+        texto = (
+            texto.replace("R$", "")
+            .replace("\xa0", "")
+            .replace(" ", "")
+        )
+
+        if "," in texto:
+            # Formato brasileiro: 1.234,56
+            texto = texto.replace(".", "").replace(",", ".")
+
+        try:
+            return float(texto)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def formatar_moeda(valor):
+        return (
+            f"R$ {float(valor):,.2f}"
+            .replace(",", "X")
+            .replace(".", ",")
+            .replace("X", ".")
+        )
+
+    df_original = carregar_dados_planilha()
+
+    if df_original.empty:
         st.info("Nenhum dado encontrado na planilha ainda. Lance o primeiro gasto!")
     else:
-        # Índices das colunas fixas
-        try:
-            idx_quem = cabecalho.index("Quem Gastou")
-            idx_cat = cabecalho.index("Categoria")
-            idx_valor = cabecalho.index("Valor")
-        except ValueError:
-            st.error("Cabeçalhos essenciais não encontrados na planilha.")
+        colunas_obrigatorias = [
+            "Data/Hora",
+            "Quem Gastou",
+            "Descrição",
+            "Categoria",
+            "Forma de Pagamento",
+            "Valor",
+        ]
+
+        colunas_faltantes = [
+            coluna for coluna in colunas_obrigatorias
+            if coluna not in df_original.columns
+        ]
+
+        if colunas_faltantes:
+            st.error(
+                "Cabeçalhos essenciais não encontrados: "
+                + ", ".join(colunas_faltantes)
+            )
             st.stop()
 
-        # Colunas de mês (tudo a partir da 7ª coluna)
-        colunas_mes = cabecalho[6:] if len(cabecalho) > 6 else []
+        # Colunas mensais são todas as colunas após as seis colunas fixas.
+        colunas_mes = list(df_original.columns[6:])
+
+        # Base de compras: mantém o valor total assumido na compra.
+        df_compras = df_original.copy()
+        df_compras["Valor Compra"] = df_compras["Valor"].apply(
+            converter_valor_planilha
+        )
+        df_compras["Pessoa"] = (
+            df_compras["Quem Gastou"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            .replace("", "Outros")
+        )
+        df_compras["Categoria Tratada"] = (
+            df_compras["Categoria"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            .replace("", "Outros")
+        )
+
+        # Base longa de desembolsos mensais.
+        registros_fluxo = []
+
+        for _, linha in df_original.iterrows():
+            pessoa = str(linha.get("Quem Gastou", "")).strip() or "Outros"
+            categoria = str(linha.get("Categoria", "")).strip() or "Outros"
+            descricao = str(linha.get("Descrição", "")).strip() or "Sem descrição"
+            forma_pagamento = (
+                str(linha.get("Forma de Pagamento", "")).strip()
+                or "Não informado"
+            )
+
+            for nome_mes in colunas_mes:
+                valor_mes = converter_valor_planilha(linha.get(nome_mes, ""))
+
+                if valor_mes <= 0:
+                    continue
+
+                try:
+                    mes_texto, ano_texto = nome_mes.split("/")
+                    data_competencia = datetime.strptime(
+                        f"01/{mes_texto}/{ano_texto}",
+                        "%d/%B/%Y",
+                    )
+                except Exception:
+                    meses_pt_numero = {
+                        "Janeiro": 1,
+                        "Fevereiro": 2,
+                        "Março": 3,
+                        "Abril": 4,
+                        "Maio": 5,
+                        "Junho": 6,
+                        "Julho": 7,
+                        "Agosto": 8,
+                        "Setembro": 9,
+                        "Outubro": 10,
+                        "Novembro": 11,
+                        "Dezembro": 12,
+                    }
+
+                    try:
+                        mes_texto, ano_texto = nome_mes.split("/")
+                        numero_mes = meses_pt_numero[mes_texto]
+                        data_competencia = datetime(
+                            int(ano_texto),
+                            numero_mes,
+                            1,
+                        )
+                    except Exception:
+                        continue
+
+                registros_fluxo.append(
+                    {
+                        "Competência": pd.Timestamp(data_competencia),
+                        "Mês/Ano": nome_mes,
+                        "Ano": data_competencia.year,
+                        "Mês Número": data_competencia.month,
+                        "Pessoa": pessoa,
+                        "Categoria": categoria,
+                        "Descrição": descricao,
+                        "Forma de Pagamento": forma_pagamento,
+                        "Valor Desembolsado": valor_mes,
+                    }
+                )
+
+        df_fluxo = pd.DataFrame(registros_fluxo)
+
+        if df_fluxo.empty:
+            st.warning(
+                "Não foram encontrados valores válidos nas colunas mensais."
+            )
+            st.stop()
 
         data_hoje = datetime.now() - timedelta(hours=3)
         mes_atual_str = obter_nome_mes_ano(data_hoje)
-        ano_atual = str(data_hoje.year)
+        ano_atual = data_hoje.year
 
-        # =====================================================
-        # 1. DADOS DO MÊS VIGENTE
-        # =====================================================
-        gastos_mes_categoria = {}
-        gastos_mes_pessoa = {}
-        total_mes = 0.0
+        df_mes = df_fluxo[df_fluxo["Mês/Ano"] == mes_atual_str].copy()
+        df_ano = df_fluxo[df_fluxo["Ano"] == ano_atual].copy()
 
-        idx_mes_atual = None
-        if mes_atual_str in cabecalho:
-            idx_mes_atual = cabecalho.index(mes_atual_str)
+        total_mes = df_mes["Valor Desembolsado"].sum()
+        total_ano = df_ano["Valor Desembolsado"].sum()
 
-        for linha in dados:
-            if len(linha) <= max(idx_quem, idx_cat):
-                continue
+        resumo_mes_categoria = (
+            df_mes.groupby("Categoria", as_index=False)["Valor Desembolsado"]
+            .sum()
+            .sort_values("Valor Desembolsado", ascending=False)
+        )
 
-            pessoa = linha[idx_quem].strip() if linha[idx_quem] else "Outros"
-            categoria = linha[idx_cat].strip() if linha[idx_cat] else "Outros"
+        resumo_mes_pessoa = (
+            df_mes.groupby("Pessoa", as_index=False)["Valor Desembolsado"]
+            .sum()
+            .sort_values("Valor Desembolsado", ascending=False)
+        )
 
-            # Normaliza pessoa
-            if pessoa not in LISTA_GASTADORES_BASE:
-                pessoa = "Outros"
+        resumo_ano_categoria = (
+            df_ano.groupby("Categoria", as_index=False)["Valor Desembolsado"]
+            .sum()
+            .sort_values("Valor Desembolsado", ascending=False)
+        )
 
-            valor_mes = 0.0
-            if idx_mes_atual is not None and len(linha) > idx_mes_atual:
-                try:
-                    v = linha[idx_mes_atual].replace(",", ".").strip()
-                    if v:
-                        valor_mes = float(v)
-                except:
-                    pass
-
-            if valor_mes > 0:
-                gastos_mes_categoria[categoria] = gastos_mes_categoria.get(categoria, 0) + valor_mes
-                gastos_mes_pessoa[pessoa] = gastos_mes_pessoa.get(pessoa, 0) + valor_mes
-                total_mes += valor_mes
-
-        # =====================================================
-        # 2. DADOS DO ANO TODO
-        # =====================================================
-        gastos_ano_categoria = {}
-        total_ano = 0.0
-
-        for linha in dados:
-            if len(linha) <= idx_cat:
-                continue
-            categoria = linha[idx_cat].strip() if linha[idx_cat] else "Outros"
-
-            for i, col_nome in enumerate(colunas_mes):
-                if col_nome.endswith(f"/{ano_atual}"):
-                    idx = 6 + i
-                    if len(linha) > idx:
-                        try:
-                            v = linha[idx].replace(",", ".").strip()
-                            if v:
-                                valor = float(v)
-                                if valor > 0:
-                                    gastos_ano_categoria[categoria] = gastos_ano_categoria.get(categoria, 0) + valor
-                                    total_ano += valor
-                        except:
-                            pass
-
-        # =====================================================
-        # MÉTRICA TOTAL GERAL (topo)
-        # =====================================================
         col1, col2, col3 = st.columns(3)
+
         with col1:
-            st.metric("💰 Total Mês Atual", f"R$ {total_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+            st.metric("💰 Total Mês Atual", formatar_moeda(total_mes))
+
         with col2:
-            st.metric("📅 Total Ano", f"R$ {total_ano:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+            st.metric("📅 Total Ano", formatar_moeda(total_ano))
+
         with col3:
             st.metric("📆 Mês de Referência", mes_atual_str)
 
         st.markdown("---")
-
-        # =====================================================
-        # GRÁFICO 1 – PIZZA DO MÊS POR CATEGORIA
-        # =====================================================
         st.subheader(f"📊 Gastos por Categoria – {mes_atual_str}")
 
-        if total_mes > 0:
-            df_mes = pd.DataFrame({
-                "Categoria": list(gastos_mes_categoria.keys()),
-                "Valor": list(gastos_mes_categoria.values())
-            }).sort_values("Valor", ascending=False)
-
-            fig1 = px.pie(
-                df_mes,
-                values="Valor",
-                names="Categoria",
-                title=f"Total do mês: R$ {total_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
-                hole=0.35
-            )
-            fig1.update_traces(
-                textposition="inside",
-                textinfo="percent+label+value",
-                hovertemplate="<b>%{label}</b><br>R$ %{value:,.2f}<br>%{percent}<extra></extra>",
-                texttemplate="%{label}<br>%{percent}<br>R$ %{value:,.2f}"
-            )
-            fig1.update_layout(
-                showlegend=True,
-                legend=dict(orientation="h", yanchor="bottom", y=-0.2),
-                margin=dict(t=50, b=50, l=20, r=20),
-                height=480
-            )
-            st.plotly_chart(fig1, use_container_width=True)
+        if resumo_mes_categoria.empty:
+            st.info(f"Nenhum gasto registrado em {mes_atual_str}.")
         else:
-            st.info(f"Nenhum gasto registrado em {mes_atual_str} ainda.")
+            fig1 = go.Figure(
+                data=[
+                    go.Pie(
+                        labels=resumo_mes_categoria["Categoria"],
+                        values=resumo_mes_categoria["Valor Desembolsado"],
+                        hole=0.35,
+                        sort=False,
+                        direction="clockwise",
+                        textinfo="label+percent",
+                        customdata=resumo_mes_categoria[
+                            "Valor Desembolsado"
+                        ],
+                        hovertemplate=(
+                            "<b>%{label}</b><br>"
+                            "Valor: R$ %{customdata:,.2f}<br>"
+                            "Percentual: %{percent}"
+                            "<extra></extra>"
+                        ),
+                    )
+                ]
+            )
+
+            fig1.update_layout(
+                title=f"Total do mês: {formatar_moeda(total_mes)}",
+                showlegend=True,
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=-0.20,
+                ),
+                margin=dict(t=60, b=80, l=20, r=20),
+                height=500,
+            )
+
+            st.plotly_chart(fig1, use_container_width=True)
+
+            tabela_categoria = resumo_mes_categoria.copy()
+            tabela_categoria["Percentual"] = (
+                tabela_categoria["Valor Desembolsado"] / total_mes * 100
+            ).round(2)
+            tabela_categoria["Valor"] = tabela_categoria[
+                "Valor Desembolsado"
+            ].apply(formatar_moeda)
+
+            st.dataframe(
+                tabela_categoria[
+                    ["Categoria", "Valor", "Percentual"]
+                ].rename(columns={"Percentual": "%"}),
+                use_container_width=True,
+                hide_index=True,
+            )
 
         st.markdown("---")
-
-        # =====================================================
-        # GRÁFICO 2 – PIZZA POR PESSOA (MÊS ATUAL)
-        # =====================================================
         st.subheader(f"👥 Gastos por Pessoa – {mes_atual_str}")
 
-        if total_mes > 0:
-            # Garante ordem e inclui quem não gastou
-            pessoas_ordem = ["Willian", "Aline", "Bernardo", "Outros"]
-            valores_pessoa = [gastos_mes_pessoa.get(p, 0) for p in pessoas_ordem]
-
-            df_pessoa = pd.DataFrame({
-                "Pessoa": pessoas_ordem,
-                "Valor": valores_pessoa
-            })
-            df_pessoa = df_pessoa[df_pessoa["Valor"] > 0]  # só mostra quem gastou
-
-            fig2 = px.pie(
-                df_pessoa,
-                values="Valor",
-                names="Pessoa",
-                title=f"Total do mês: R$ {total_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
-                hole=0.35,
-                color_discrete_sequence=px.colors.qualitative.Set2
-            )
-            fig2.update_traces(
-                textposition="inside",
-                textinfo="percent+label+value",
-                hovertemplate="<b>%{label}</b><br>R$ %{value:,.2f}<br>%{percent}<extra></extra>",
-                texttemplate="%{label}<br>%{percent}<br>R$ %{value:,.2f}"
-            )
-            fig2.update_layout(
-                showlegend=True,
-                legend=dict(orientation="h", yanchor="bottom", y=-0.15),
-                margin=dict(t=50, b=50, l=20, r=20),
-                height=450
-            )
-            st.plotly_chart(fig2, use_container_width=True)
-        else:
+        if resumo_mes_pessoa.empty:
             st.info("Nenhum gasto por pessoa neste mês.")
+        else:
+            fig2 = go.Figure(
+                data=[
+                    go.Pie(
+                        labels=resumo_mes_pessoa["Pessoa"],
+                        values=resumo_mes_pessoa["Valor Desembolsado"],
+                        hole=0.35,
+                        sort=False,
+                        direction="clockwise",
+                        textinfo="label+percent",
+                        customdata=resumo_mes_pessoa[
+                            "Valor Desembolsado"
+                        ],
+                        hovertemplate=(
+                            "<b>%{label}</b><br>"
+                            "Valor: R$ %{customdata:,.2f}<br>"
+                            "Percentual: %{percent}"
+                            "<extra></extra>"
+                        ),
+                    )
+                ]
+            )
+
+            fig2.update_layout(
+                title=f"Total do mês: {formatar_moeda(total_mes)}",
+                showlegend=True,
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=-0.20,
+                ),
+                margin=dict(t=60, b=80, l=20, r=20),
+                height=500,
+            )
+
+            st.plotly_chart(fig2, use_container_width=True)
+
+            tabela_pessoa = resumo_mes_pessoa.copy()
+            tabela_pessoa["Percentual"] = (
+                tabela_pessoa["Valor Desembolsado"] / total_mes * 100
+            ).round(2)
+            tabela_pessoa["Valor"] = tabela_pessoa[
+                "Valor Desembolsado"
+            ].apply(formatar_moeda)
+
+            st.dataframe(
+                tabela_pessoa[
+                    ["Pessoa", "Valor", "Percentual"]
+                ].rename(columns={"Percentual": "%"}),
+                use_container_width=True,
+                hide_index=True,
+            )
 
         st.markdown("---")
-
-        # =====================================================
-        # GRÁFICO 3 – PIZZA ANUAL POR CATEGORIA
-        # =====================================================
         st.subheader(f"📅 Gastos Anuais por Categoria – {ano_atual}")
 
-        if total_ano > 0:
-            df_ano = pd.DataFrame({
-                "Categoria": list(gastos_ano_categoria.keys()),
-                "Valor": list(gastos_ano_categoria.values())
-            }).sort_values("Valor", ascending=False)
-
-            fig3 = px.pie(
-                df_ano,
-                values="Valor",
-                names="Categoria",
-                title=f"Total do ano: R$ {total_ano:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
-                hole=0.35
-            )
-            fig3.update_traces(
-                textposition="inside",
-                textinfo="percent+label+value",
-                hovertemplate="<b>%{label}</b><br>R$ %{value:,.2f}<br>%{percent}<extra></extra>",
-                texttemplate="%{label}<br>%{percent}<br>R$ %{value:,.2f}"
-            )
-            fig3.update_layout(
-                showlegend=True,
-                legend=dict(orientation="h", yanchor="bottom", y=-0.25),
-                margin=dict(t=50, b=80, l=20, r=20),
-                height=520
-            )
-            st.plotly_chart(fig3, use_container_width=True)
+        if resumo_ano_categoria.empty:
+            st.info(f"Nenhum gasto registrado em {ano_atual}.")
         else:
-            st.info(f"Nenhum gasto registrado em {ano_atual} ainda.")
+            fig3 = go.Figure(
+                data=[
+                    go.Pie(
+                        labels=resumo_ano_categoria["Categoria"],
+                        values=resumo_ano_categoria[
+                            "Valor Desembolsado"
+                        ],
+                        hole=0.35,
+                        sort=False,
+                        direction="clockwise",
+                        textinfo="label+percent",
+                        customdata=resumo_ano_categoria[
+                            "Valor Desembolsado"
+                        ],
+                        hovertemplate=(
+                            "<b>%{label}</b><br>"
+                            "Valor: R$ %{customdata:,.2f}<br>"
+                            "Percentual: %{percent}"
+                            "<extra></extra>"
+                        ),
+                    )
+                ]
+            )
 
-        # =====================================================
-        # TABELA RESUMO (opcional, mas útil)
-        # =====================================================
-        with st.expander("📋 Ver tabela detalhada do mês"):
-            if total_mes > 0:
-                df_resumo = pd.DataFrame({
-                    "Categoria": list(gastos_mes_categoria.keys()),
-                    "Valor (R$)": [round(v, 2) for v in gastos_mes_categoria.values()],
-                    "%": [round(v / total_mes * 100, 1) for v in gastos_mes_categoria.values()]
-                }).sort_values("Valor (R$)", ascending=False)
-                st.dataframe(df_resumo, use_container_width=True, hide_index=True)
-            else:
+            fig3.update_layout(
+                title=f"Total do ano: {formatar_moeda(total_ano)}",
+                showlegend=True,
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=-0.20,
+                ),
+                margin=dict(t=60, b=80, l=20, r=20),
+                height=520,
+            )
+
+            st.plotly_chart(fig3, use_container_width=True)
+
+        with st.expander("📋 Ver lançamentos detalhados do mês"):
+            if df_mes.empty:
                 st.write("Sem dados.")
+            else:
+                detalhado = df_mes[
+                    [
+                        "Pessoa",
+                        "Descrição",
+                        "Categoria",
+                        "Forma de Pagamento",
+                        "Valor Desembolsado",
+                    ]
+                ].copy()
+
+                detalhado["Valor"] = detalhado[
+                    "Valor Desembolsado"
+                ].apply(formatar_moeda)
+
+                st.dataframe(
+                    detalhado[
+                        [
+                            "Pessoa",
+                            "Descrição",
+                            "Categoria",
+                            "Forma de Pagamento",
+                            "Valor",
+                        ]
+                    ],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
