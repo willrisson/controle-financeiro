@@ -355,20 +355,20 @@ with aba2:
         if dados:
             df = pd.DataFrame(dados)
             
-            # Conversão robusta para o formato brasileiro da planilha
+            # Conversão limpa e forçada para o padrão da planilha
             if "Valor" in df.columns:
                 def converter_para_float(val):
                     if pd.isna(val):
                         return 0.0
-                    if isinstance(val, (int, float)):
-                        return float(val)
-                    
                     val_str = str(val).replace("R$", "").strip()
-                    # Remove pontos de milhar e substitui vírgula por ponto decimal
-                    if "," in val_str:
-                        val_str = val_str.replace(".", "").replace(",", ".")
+                    # Substitui a vírgula por ponto para o Python calcular corretamente
+                    val_str = val_str.replace(".", "").replace(",", ".")
                     try:
-                        return float(val_str)
+                        num = float(val_str)
+                        # Se o valor vier multiplicado por mil por causa da formatação do sheets, ajusta
+                        if num > 1000:
+                            num = num / 100
+                        return num
                     except:
                         return 0.0
 
