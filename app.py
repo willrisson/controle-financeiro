@@ -355,32 +355,31 @@ with aba2:
         if dados:
             df = pd.DataFrame(dados)
             
-            # Função para limpar e converter valores salvos como texto com vírgula/ponto
+            # --- DIAGNÓSTICO TEMPORÁRIO ---
+            st.write("Dados crus vindos da planilha:", df.head())
+            
+            # Converte valores para float de forma segura independente de ponto/vírgula
             if "Valor" in df.columns:
-                def limpar_valor(val):
-                    if pd.isna(val):
-                        return 0.0
-                    val_str = str(val).replace("R$", "").replace(" ", "").strip()
-                    # Se tiver vírgula e ponto, assume formato brasileiro (ex: 1.234,56)
-                    if "," in val_str and "." in val_str:
-                        val_str = val_str.replace(".", "").replace(",", ".")
-                    elif "," in val_str:
-                        val_str = val_str.replace(",", ".")
+                def converter_para_float(val):
                     try:
+                        val_str = str(val).replace("R$", "").strip()
+                        # Se tiver formato brasileiro com ponto de milhar e vírgula decimal
+                        if "." in val_str and "," in val_str:
+                            val_str = val_str.replace(".", "").replace(",", ".")
+                        elif "," in val_str:
+                            val_str = val_str.replace(",", ".")
                         return float(val_str)
                     except:
                         return 0.0
 
-                df["Valor_Num"] = df["Valor"].apply(limpar_valor)
+                df["Valor_Num"] = df["Valor"].apply(converter_para_float)
                 total_geral = df["Valor_Num"].sum()
                 
-                # Exibe o card com o Valor Total Geral correto
                 st.metric(label="💰 Total Geral de Despesas", value=f"R$ {total_geral:,.2f}")
                 st.markdown("---")
 
             st.markdown("### 📈 Visualização de Gastos")
             if "Categoria" in df.columns and "Valor_Num" in df.columns:
-                # Agrupa usando a coluna numérica limpa
                 df_grouped = df.groupby("Categoria", as_index=False)["Valor_Num"].sum()
                 
                 fig = px.pie(df_grouped, names="Categoria", values="Valor_Num", title="Gastos Totais por Categoria")
@@ -389,9 +388,10 @@ with aba2:
                     texttemplate='%{label}<br>R$ %{value:,.2f}<br>(%{percent})'
                 )
                 st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.dataframe(df)
+            
+            st.markdown("### 📋 Tabela Completa de Dados")
+            st.dataframe(df)
         else:
             st.info("ℹ️ Ainda não há dados cadastrados na planilha para gerar gráficos.")
     except Exception as e:
-        st.info("ℹ️ Cadastre seu primeiro gasto na aba anterior para habilitar os gráficos.")
+        st.error(f"Erro ao carregar: {e}")
