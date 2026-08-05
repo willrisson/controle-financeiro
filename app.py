@@ -335,7 +335,6 @@ with aba1:
                 st.session_state["form_limpo"] = True
                 st.session_state["processando_envio"] = False
                 st.rerun()
-
 # ==========================================
 # ABA 2: GRÁFICOS POR MÊS
 # ==========================================
@@ -350,32 +349,36 @@ with aba2:
         client = get_gspread_client()
         sh = client.open_by_key(SPREADSHEET_ID)
         worksheet = sh.worksheet(NOME_ABA)
-        dados = worksheet.get_all_records()
         
-        if dados:
-            df = pd.DataFrame(dados)
+        # Pega todas as linhas brutas ignorando formatações visuais do Sheets
+        rows = worksheet.get_all_values()
+        
+        if len(rows) > 1:
+            cabecalho = rows[0]
+            dados_linhas = rows[1:]
+            df = pd.DataFrame(dados_linhas, columns=cabecalho)
             
-            # Conversão exata ajustando a escala dos valores vindos do Sheets
+            # Limpeza e conversão exata da coluna Valor
             if "Valor" in df.columns:
-                def converter_para_float(val):
-                    if pd.isna(val):
+                def converter_valor_limpo(val):
+                    if not val:
                         return 0.0
-                    val_str = str(val).replace("R$", "").strip()
-                    # Remove pontos e troca vírgula por ponto para o cálculo
-                    val_str = val_str.replace(".", "").replace(",", ".")
+                    # Remove R$, espaços e padroniza para float padrão do Python
+                    val_str = str(val).replace("R$", "").replace(" ", "").strip()
+                    # Se tiver vírgula, substitui por ponto decimal e remove pontos de milhar
+                    if "," in val_str:
+                        val_str = val_str.replace(".", "").replace(",", ".")
                     try:
-                        num = float(val_str)
-                        # Ajuste preciso para a escala correta (ex: 10000 vira 100.0)
-                        if num >= 1000:
-                            num = num / 100
-                        return num
+                        return float(val_str)
                     except:
                         return 0.0
 
-                df["Valor_Num"] = df["Valor"].apply(converter_para_float)
+                df["Valor_Num"] = df["Valor"].apply(converter_valor_limpo)
                 total_geral = df["Valor_Num"].sum()
                 
-                st.metric(label="💰 Total Geral de Despesas", value=f"R$ {total_geral:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                # Exibe o total formatado no padrão brasileiro (R$ 144,00)
+                total_fmt = f"R$ {total_geral:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                st.metric(label="💰 Total Geral de Despesas", value=total_fmt)
                 st.markdown("---")
 
             st.markdown("### 📈 Visualização de Gastos")
