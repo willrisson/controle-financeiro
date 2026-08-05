@@ -353,11 +353,10 @@ with aba2:
         rows = worksheet.get_all_values()
         
         if len(rows) > 1:
-            cabecalho = [col.strip() for col in rows[0]] # Remove espaços dos títulos
+            cabecalho = [col.strip() for col in rows[0]]
             dados_linhas = rows[1:]
             df = pd.DataFrame(dados_linhas, columns=cabecalho)
             
-            # Acha a coluna de valor independentemente de espaços ou maiúsculas
             col_valor = next((c for c in df.columns if "valor" in c.lower()), None)
             col_cat = next((c for c in df.columns if "categoria" in c.lower()), None)
             
@@ -382,9 +381,18 @@ with aba2:
 
             st.markdown("### 📈 Visualização de Gastos")
             if col_cat and "Valor_Num" in df.columns:
+                # Cria um novo DataFrame estrito apenas com Categoria e o Valor Numérico somado
                 df_grouped = df.groupby(col_cat, as_index=False)["Valor_Num"].sum()
                 
-                fig = px.pie(df_grouped, names=col_cat, values="Valor_Num", title="Gastos Totais por Categoria")
+                # Garante explicitamente que a coluna de valores é float pura
+                df_grouped["Valor_Num"] = pd.to_numeric(df_grouped["Valor_Num"])
+                
+                fig = px.pie(
+                    df_grouped, 
+                    names=col_cat, 
+                    values="Valor_Num", 
+                    title="Gastos Totais por Categoria"
+                )
                 fig.update_traces(
                     textinfo='label+value+percent', 
                     texttemplate='%{label}<br>R$ %{value:,.2f}<br>(%{percent})'
