@@ -92,9 +92,13 @@ def classificar_categoria_groq(descricao, status_container, categorias_disponive
     return "Outros"
 
 def converter_valor_limpo(val):
-    if not val:
+    if val is None:
         return 0.0
-    val_str = str(val).replace("R$", "").replace(" ", "").strip()
+    val_str = str(val).strip()
+    if not val_str or val_str.lower() in ["nan", "none", ""]:
+        return 0.0
+    
+    val_str = val_str.replace("R$", "").replace(" ", "")
     if "," in val_str and "." in val_str:
         val_str = val_str.replace(".", "").replace(",", ".")
     elif "," in val_str:
@@ -379,7 +383,7 @@ with aba2:
                     df_mes_filtrado = df_mes[df_mes["Valor_Mes"] > 0]
                     
                     total_mes = df_mes_filtrado["Valor_Mes"].sum()
-                    st.metric(label=f"💰 Total Gasto em {mes_selecionado}", value=f"R$ {total_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                    st.metric(label=f"💰 Total Gasto em {mes_selecionado} (100%)", value=f"R$ {total_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                     st.markdown("---")
                     
                     col_m1, col_m2, col_m3 = st.columns(3)
