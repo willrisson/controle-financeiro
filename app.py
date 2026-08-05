@@ -11,10 +11,10 @@ scopes = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-# Lê o dicionário padrão do gcp_service_account que está nos Secrets
 creds_dict = dict(st.secrets["gcp_service_account"])
 creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
 client = gspread.authorize(creds)
+
 
 # --- CONFIGURAÇÃO ---
 st.set_page_config(page_title="Controle Financeiro Familiar", page_icon="💳", layout="centered")
