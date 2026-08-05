@@ -16,7 +16,6 @@ GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 SPREADSHEET_ID = "1eFK9CtarQoKqpZBBoptltnNS-cWU92pw2K7oEAXyI7k" 
 NOME_ABA = "Controle de Gastos"
 
-# Função auxiliar unificada para autenticação segura via Secrets
 def get_gspread_client():
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
@@ -33,7 +32,6 @@ LISTA_CATEGORIAS_BASE = [
 
 LISTA_GASTADORES_BASE = ["Willian", "Aline", "Bernardo"]
 
-# Inicialização de estados
 if "gastadores_extras" not in st.session_state:
     st.session_state["gastadores_extras"] = []
 
@@ -46,7 +44,6 @@ if "form_limpo" not in st.session_state:
 if "processando_envio" not in st.session_state:
     st.session_state["processando_envio"] = False
 
-# Limpeza de campos se acionada
 if st.session_state["form_limpo"]:
     st.session_state["input_descricao"] = ""
     st.session_state["input_valor"] = ""
@@ -94,16 +91,12 @@ def classificar_categoria_groq(descricao, status_container, categorias_disponive
         pass
     return "Outros"
 
-# ==========================================
-# CRIAÇÃO DAS ABAS NO TOPO
-# ==========================================
 aba1, aba2 = st.tabs(["📝 Lançar Gasto", "📊 Gráficos por Mês"])
 
 with aba1:
     st.title("💳 Controle Familiar de Despesas")
     st.markdown("**Lançador Organizado**")
 
-    # --- SEÇÃO DE QUEM ESTÁ GASTANDO ---
     st.markdown("### 👤 Quem está gastando?")
     lista_gastadores_atualizada = sorted(list(set(LISTA_GASTADORES_BASE + st.session_state["gastadores_extras"])))
     lista_gastadores_com_outro = lista_gastadores_atualizada + ["Outro..."]
@@ -127,7 +120,6 @@ with aba1:
     descricao_gasto = st.text_input("Descrição do Gasto", placeholder="Ex: Meta Quest 3s", key="input_descricao")
     valor_texto = st.text_input("Valor Total (R$)", placeholder="Ex: 50, 50,00 ou 1800,00", key="input_valor")
 
-    # --- CONEXÃO PARA BUSCAR CATEGORIAS JÁ UTILIZADAS NA PLANILHA ---
     @st.cache_data(ttl=60)
     def carregar_categorias_existentes():
         try:
@@ -160,7 +152,6 @@ with aba1:
     except ValueError:
         indice_padrao = 0
 
-    # --- SEÇÃO DE CATEGORIA ---
     st.markdown("### 📂 Categoria do Gasto")
     col_cat_sel, col_nova_txt, col_btn_add = st.columns([2, 2, 1])
 
@@ -257,7 +248,6 @@ with aba1:
                 status.write("🗓️ Mapeando e garantindo cabeçalhos exatos...")
                 
                 cabecalho_base = ["Data/Hora", "Quem Gastou", "Descrição", "Categoria", "Forma de Pagamento", "Valor"]
-                
                 cabecalho_atual = worksheet.row_values(1)
                 
                 meses_existentes = []
@@ -315,10 +305,8 @@ with aba1:
                         linha_dados[idx_mes] = float(p["valor"])
 
                 status.write("✍️ Gravando linha alinhada na planilha...")
-                
                 todas_linhas = worksheet.get_all_values()
                 proxima_linha = len(todas_linhas) + 1
-                
                 intervalo = f"A{proxima_linha}:{letra_ultima_coluna}{proxima_linha}"
 
                 worksheet.batch_clear([intervalo])
@@ -407,15 +395,17 @@ with aba2:
                                 df_c["Percentual"] = (df_c["Valor_Mes"] / total_c * 100).round(2)
                                 df_c["Valor_Fmt"] = df_c["Valor_Mes"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                                 
-                                # Gráfico de Colunas em Barras
                                 fig_cm = px.bar(
                                     df_c, 
                                     x=col_cat, 
-                                    y="Valor_Mes", 
-                                    text=df_c["Valor_Fmt"],
+                                    y="Valor_Mes",
                                     labels={col_cat: "Categoria", "Valor_Mes": "Valor (R$)"}
                                 )
-                                fig_cm.update_traces(texttemplate='%{text}<br>(%{customdata}%)', customdata=df_c["Percentual"], textposition='outside')
+                                fig_cm.update_traces(
+                                    text=df_c["Valor_Fmt"] + "<br>(" + df_c["Percentual"].astype(str) + "%)",
+                                    textposition='outside'
+                                )
+                                fig_cm.update_layout(yaxis=dict(tickprefix="R$ "))
                                 st.plotly_chart(fig_cm, use_container_width=True)
                             else:
                                 st.info("Nenhum gasto neste mês.")
@@ -433,11 +423,14 @@ with aba2:
                                 fig_qm = px.bar(
                                     df_q, 
                                     x=col_quem, 
-                                    y="Valor_Mes", 
-                                    text=df_q["Valor_Fmt"],
+                                    y="Valor_Mes",
                                     labels={col_quem: "Membro", "Valor_Mes": "Valor (R$)"}
                                 )
-                                fig_qm.update_traces(texttemplate='%{text}<br>(%{customdata}%)', customdata=df_q["Percentual"], textposition='outside')
+                                fig_qm.update_traces(
+                                    text=df_q["Valor_Fmt"] + "<br>(" + df_q["Percentual"].astype(str) + "%)",
+                                    textposition='outside'
+                                )
+                                fig_qm.update_layout(yaxis=dict(tickprefix="R$ "))
                                 st.plotly_chart(fig_qm, use_container_width=True)
                             else:
                                 st.info("Nenhum dado de quem gastou neste mês.")
@@ -467,11 +460,14 @@ with aba2:
                             fig_ca = px.bar(
                                 df_cat_ano, 
                                 x=col_cat, 
-                                y="Valor_Num", 
-                                text=df_cat_ano["Valor_Fmt"],
+                                y="Valor_Num",
                                 labels={col_cat: "Categoria", "Valor_Num": "Valor (R$)"}
                             )
-                            fig_ca.update_traces(texttemplate='%{text}<br>(%{customdata}%)', customdata=df_cat_ano["Percentual"], textposition='outside')
+                            fig_ca.update_traces(
+                                text=df_cat_ano["Valor_Fmt"] + "<br>(" + df_cat_ano["Percentual"].astype(str) + "%)",
+                                textposition='outside'
+                            )
+                            fig_ca.update_layout(yaxis=dict(tickprefix="R$ "))
                             st.plotly_chart(fig_ca, use_container_width=True)
                             
                     with col_a2:
@@ -487,11 +483,14 @@ with aba2:
                             fig_qa = px.bar(
                                 df_quem_ano, 
                                 x=col_quem, 
-                                y="Valor_Num", 
-                                text=df_quem_ano["Valor_Fmt"],
+                                y="Valor_Num",
                                 labels={col_quem: "Membro", "Valor_Num": "Valor (R$)"}
                             )
-                            fig_qa.update_traces(texttemplate='%{text}<br>(%{customdata}%)', customdata=df_quem_ano["Percentual"], textposition='outside')
+                            fig_qa.update_traces(
+                                text=df_quem_ano["Valor_Fmt"] + "<br>(" + df_quem_ano["Percentual"].astype(str) + "%)",
+                                textposition='outside'
+                            )
+                            fig_qa.update_layout(yaxis=dict(tickprefix="R$ "))
                             st.plotly_chart(fig_qa, use_container_width=True)
 
                 # ==========================================
