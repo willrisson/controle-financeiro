@@ -381,19 +381,26 @@ with aba2:
 
             st.markdown("### 📈 Visualização de Gastos")
             if col_cat and "Valor_Num" in df.columns:
-                # Agrupa e converte explicitamente para float nativo do Python
                 df_grouped = df.groupby(col_cat, as_index=False)["Valor_Num"].sum()
                 df_grouped["Valor_Num"] = df_grouped["Valor_Num"].astype(float)
+                
+                # Cria uma coluna de texto formatada em Reais para exibir no gráfico sem falhas
+                df_grouped["Valor_Fmt"] = df_grouped["Valor_Num"].apply(
+                    lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                )
                 
                 fig = px.pie(
                     df_grouped, 
                     names=col_cat, 
                     values="Valor_Num", 
-                    title="Gastos Totais por Categoria"
+                    title="Gastos Totais por Categoria",
+                    custom_data=["Valor_Fmt"]
                 )
+                
+                # Exibe o valor formatado corretamente direto da coluna customizada
                 fig.update_traces(
-                    textinfo='label+value+percent', 
-                    texttemplate='%{label}<br>R$ %{value:,.2f}<br>(%{percent})'
+                    textinfo='label+percent', 
+                    texttemplate='%{label}<br>%{customdata[0]}<br>(%{percent})'
                 )
                 st.plotly_chart(fig, use_container_width=True)
             
