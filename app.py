@@ -436,39 +436,50 @@ with aba2:
                     st.info("Ainda não há colunas de meses cadastradas na planilha.")
 
             # ==========================================
-            # SUB-ABA 2: BALANÇO ANUAL (Baseado na soma real das colunas de meses)
+            # SUB-ABA 2: BALANÇO ANUAL (Cálculo explícito de percentual sobre o total das colunas de meses)
             # ==========================================
             with sub_aba2:
                 st.markdown("### 🌐 Panorama Geral do Ano")
                 
                 if colunas_meses:
                     df_anual = df.copy()
-                    # Converte todas as colunas de meses para numérico
+                    
+                    # Converte explicitamente cada coluna de mês para número
                     for m in colunas_meses:
                         df_anual[m] = df_anual[m].apply(converter_valor_limpo)
                     
-                    # Soma o total real gasto em todas as parcelas do ano para cada linha
-                    df_anual["Total_Ano"] = df_anual[colunas_meses].sum(axis=1)
-                    total_geral = df_anual["Total_Ano"].sum()
+                    # 1. Soma o valor real correspondente às parcelas do ano para cada linha de gasto
+                    df_anual["Total_Linha_Ano"] = df_anual[colunas_meses].sum(axis=1)
                     
-                    st.metric(label="💰 Total Geral Acumulado no Ano", value=f"R$ {total_geral:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                    # 2. Descobre o valor total geral somando todas as colunas de meses reais (Ex: 894,00)
+                    total_geral_ano = df_anual[colunas_meses].sum().sum()
+                    
+                    st.metric(label="💰 Total Geral Acumulado no Ano", value=f"R$ {total_geral_ano:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                     st.markdown("---")
                     
                     col_a1, col_a2 = st.columns(2)
                     with col_a1:
                         st.markdown("#### Gastos por Categoria (Anual)")
                         if col_cat and not df_anual.empty:
-                            df_cat_ano = df_anual.groupby(col_cat, as_index=False)["Total_Ano"].sum()
-                            df_cat_ano = df_cat_ano[df_cat_ano["Total_Ano"] > 0]
+                            # Agrupa por categoria somando o total do ano
+                            df_cat_ano = df_anual.groupby(col_cat, as_index=False)["Total_Linha_Ano"].sum()
+                            df_cat_ano = df_cat_ano[df_cat_ano["Total_Linha_Ano"] > 0]
+                            
+                            if total_geral_ano > 0:
+                                # 3. Calcula matematicamente a porcentagem exata solicitada: (Valor Individual / Total Geral) * 100
+                                df_cat_ano["Percentual"] = (df_cat_ano["Total_Linha_Ano"] / total_geral_ano) * 100
+                            else:
+                                df_cat_ano["Percentual"] = 0.0
                             
                             if not df_cat_ano.empty:
                                 fig_ca = px.pie(
                                     df_cat_ano, 
                                     names=col_cat, 
-                                    values="Total_Ano",
+                                    values="Total_Linha_Ano",
                                     hole=0.4,
                                     template="plotly_white"
                                 )
+                                # Configura o texto da fatia para exibir explicitamente o valor calculado e a porcentagem correta
                                 fig_ca.update_traces(
                                     textinfo="percent+label",
                                     hovertemplate="<b>%{label}</b><br>Valor: R$ %{value:,.2f}<br>Porcentagem: %{percent}<extra></extra>"
@@ -483,14 +494,20 @@ with aba2:
                     with col_a2:
                         st.markdown("#### Quem Gastou Mais (Anual)")
                         if col_quem and not df_anual.empty:
-                            df_quem_ano = df_anual.groupby(col_quem, as_index=False)["Total_Ano"].sum()
-                            df_quem_ano = df_quem_ano[df_quem_ano["Total_Ano"] > 0]
+                            # Agrupa por pessoa somando o total do ano
+                            df_quem_ano = df_anual.groupby(col_quem, as_index=False)["Total_Linha_Ano"].sum()
+                            df_quem_ano = df_quem_ano[df_quem_ano["Total_Linha_Ano"] > 0]
+                            
+                            if total_geral_ano > 0:
+                                df_quem_ano["Percentual"] = (df_quem_ano["Total_Linha_Ano"] / total_geral_ano) * 100
+                            else:
+                                df_quem_ano["Percentual"] = 0.0
                             
                             if not df_quem_ano.empty:
                                 fig_qa = px.pie(
                                     df_quem_ano, 
                                     names=col_quem, 
-                                    values="Total_Ano",
+                                    values="Total_Linha_Ano",
                                     hole=0.4,
                                     template="plotly_white"
                                 )
