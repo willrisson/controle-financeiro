@@ -318,7 +318,7 @@ if st.session_state["processando_envio"]:
             intervalo = f"A{proxima_linha}:{letra_ultima_coluna}{proxima_linha}"
 
             worksheet.batch_clear([intervalo])
-            worksheet.update(intervalo, [linha_dados], value_input_option='RAW')
+            worksheet.update(intervalo, [linha_dados], value_input_option='USER_ENTERED')
             
             status.update(label="🎉 Gasto registrado com sucesso!", state="complete", expanded=False)
             if parcelado:
