@@ -262,7 +262,8 @@ if st.session_state["processando_envio"]:
             
             cabecalho_final = cabecalho_base + [m for m in meses_existentes if m not in cabecalho_base]
 
-            data_hoje = datetime.now()
+            from datetime import timedelta
+            data_hoje = datetime.now() - timedelta(hours=3)
             detalhe_pagamento = f"{forma_pagamento} ({banco_emissor})"
             valor_parcela = round(valor_gasto / num_parcelas, 2) if parcelado and num_parcelas > 1 else valor_gasto
 
