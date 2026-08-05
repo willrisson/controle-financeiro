@@ -148,7 +148,7 @@ except ValueError:
 
 # --- SEÇÃO DE CATEGORIA ---
 st.markdown("### 📂 Categoria do Gasto")
-col_cat_sel, col_nova_txt, col_btn_add = st.columns([2, 2, 1], vertical_alignment="bottom")
+col_cat_sel, col_nova_txt, col_btn_add = st.columns([2, 2, 1])
 
 with col_cat_sel:
     categoria_selecionada = st.selectbox("Selecione a Categoria", lista_categorias_atualizada, index=indice_padrao, key="select_categoria", label_visibility="collapsed")
