@@ -350,16 +350,18 @@ with aba2:
         sh = client.open_by_key(SPREADSHEET_ID)
         worksheet = sh.worksheet(NOME_ABA)
         
-        # Pega todas as linhas brutas ignorando formatações visuais do Sheets
         rows = worksheet.get_all_values()
         
         if len(rows) > 1:
-            cabecalho = rows[0]
+            cabecalho = [col.strip() for col in rows[0]] # Remove espaços dos títulos
             dados_linhas = rows[1:]
             df = pd.DataFrame(dados_linhas, columns=cabecalho)
             
-            # Limpeza e conversão exata da coluna Valor para numérica
-            if "Valor" in df.columns:
+            # Acha a coluna de valor independentemente de espaços ou maiúsculas
+            col_valor = next((c for c in df.columns if "valor" in c.lower()), None)
+            col_cat = next((c for c in df.columns if "categoria" in c.lower()), None)
+            
+            if col_valor:
                 def converter_valor_limpo(val):
                     if not val:
                         return 0.0
@@ -371,21 +373,18 @@ with aba2:
                     except:
                         return 0.0
 
-                df["Valor_Num"] = df["Valor"].apply(converter_valor_limpo)
+                df["Valor_Num"] = df[col_valor].apply(converter_valor_limpo)
                 total_geral = df["Valor_Num"].sum()
                 
-                # Exibe o total formatado no padrão brasileiro (R$ 144,00)
                 total_fmt = f"R$ {total_geral:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
                 st.metric(label="💰 Total Geral de Despesas", value=total_fmt)
                 st.markdown("---")
 
             st.markdown("### 📈 Visualização de Gastos")
-            if "Categoria" in df.columns and "Valor_Num" in df.columns:
-                # Agrupa rigorosamente usando a coluna numérica correta (Valor_Num)
-                df_grouped = df.groupby("Categoria", as_index=False)["Valor_Num"].sum()
+            if col_cat and "Valor_Num" in df.columns:
+                df_grouped = df.groupby(col_cat, as_index=False)["Valor_Num"].sum()
                 
-                # Gera o gráfico utilizando values="Valor_Num"
-                fig = px.pie(df_grouped, names="Categoria", values="Valor_Num", title="Gastos Totais por Categoria")
+                fig = px.pie(df_grouped, names=col_cat, values="Valor_Num", title="Gastos Totais por Categoria")
                 fig.update_traces(
                     textinfo='label+value+percent', 
                     texttemplate='%{label}<br>R$ %{value:,.2f}<br>(%{percent})'
