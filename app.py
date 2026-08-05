@@ -7,9 +7,10 @@ import time
 from datetime import datetime, timedelta
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
 # --- CONFIGURAÇÃO ---
-st.set_page_config(page_title="Controle Financeiro Familiar", page_icon="💳", layout="centered")
+st.set_page_config(page_title="Controle Financeiro Familiar", page_icon="💳", layout="wide")
 
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 SPREADSHEET_ID = "1eFK9CtarQoKqpZBBoptltnNS-cWU92pw2K7oEAXyI7k" 
@@ -197,7 +198,6 @@ with aba1:
     with col_parc_num:
         num_parcelas_str = st.text_input("Número de Parcelas", disabled=not parcelado, placeholder="Ex: 10", key="input_num_parcelas")
 
-    # Botão principal com bloqueio ativo por session_state mantendo o tipo primary (vermelho/destaque)
     btn_enviar = st.button("🚀 Registrar Gasto", type="primary", use_container_width=True, disabled=st.session_state["processando_envio"])
 
     if btn_enviar:
@@ -209,7 +209,6 @@ with aba1:
             st.session_state["processando_envio"] = True
             st.rerun()
 
-    # Executa o salvamento apenas se a flag estiver ativa
     if st.session_state["processando_envio"]:
         try:
             v_limpo = valor_texto.strip().replace("R$", "").replace(" ", "")
@@ -335,41 +334,6 @@ with aba1:
                 st.session_state["form_limpo"] = True
                 st.session_state["processando_envio"] = False
                 st.rerun()
-import streamlit as st
-import pandas as pd
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-import plotly.express as px
-import plotly.graph_objects as go  # Importação corrigida aqui!
-
-# Configuração da Página
-st.set_page_config(page_title="Controle Financeiro Familiar", page_icon="💰", layout="wide")
-
-# Configurações do Google Sheets
-SPREADSHEET_ID = "1m8bs297sytwdnfvuhsjht"
-NOME_ABA = "Página1"
-
-def get_gspread_client():
-    scope = [
-        "https://spreadsheets.google.com/feeds",
-        "https://www.googleapis.com/auth/drive"
-    ]
-    credentials_dict = dict(st.secrets["gcp_service_account"])
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
-    client = gspread.authorize(creds)
-    return client
-
-st.markdown("<h1 style='text-align: center;'>💰 Painel de Controle Financeiro</h1>", unsafe_allow_html=True)
-
-# Abas Principais
-aba1, aba2 = st.tabs(["🚀 Lançar Gasto", "📊 Gráficos por Mês"])
-
-# ==========================================
-# ABA 1: LANÇAR GASTO (Mantida como está)
-# ==========================================
-with aba1:
-    st.markdown("### Lançamento de Gastos via Telegram ou Manual")
-    st.info("Utilize o bot do Telegram para lançamentos automáticos ou preencha a planilha diretamente.")
 
 # ==========================================
 # ABA 2: GRÁFICOS E ANÁLISES FINANCEIRAS
