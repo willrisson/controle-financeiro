@@ -104,7 +104,7 @@ def converter_valor_limpo(val):
     except:
         return 0.0
 
-aba1, aba2 = st.tabs(["📝 Lançar Gasto", "📊 Gráficos por Mês"])
+aba1, aba2 = st.tabs(["📝 Lançar Gasto", "📊 Gráficos e Relatórios"])
 
 with aba1:
     st.title("💳 Controle Familiar de Despesas")
@@ -130,8 +130,8 @@ with aba1:
 
     st.markdown("---")
 
-    descricao_gasto = st.text_input("Descrição do Gasto", placeholder="Ex: Meta Quest 3s", key="input_descricao")
-    valor_texto = st.text_input("Valor Total (R$)", placeholder="Ex: 50, 50,00 ou 1800,00", key="input_valor")
+    descricao_gasto = st.text_input("Descrição do Gasto", placeholder="Ex: Compras Supermercado", key="input_descricao")
+    valor_texto = st.text_input("Valor Total (R$)", placeholder="Ex: 50 ou 1800,00", key="input_valor")
 
     @st.cache_data(ttl=60)
     def carregar_categorias_existentes():
@@ -194,7 +194,7 @@ with aba1:
     with col_forma:
         forma_pagamento = st.selectbox("Forma de Pagamento", ["Pix", "Cartão de Crédito", "Cartão de Débito", "Dinheiro", "Boleto"], key="select_forma")
     with col_banco:
-        banco_emissor = st.selectbox("Banco / Emissor", ["Nubank", "Mercado Pago", "Inter", "Banrisul", "Santander", "Banco do Brasil", "Itaú", "Caixa", "Bradesco", "Outro"], key="select_banco")
+        banco_emissor = st.selectbox("Banco / Emissor", ["Banrisul", "Nubank", "Inter", "Mercado Pago", "Santander", "Banco do Brasil", "Itaú", "Caixa", "Bradesco", "Outro"], key="select_banco")
 
     col_parc_check, col_parc_num = st.columns(2)
     with col_parc_check:
@@ -260,17 +260,16 @@ with aba1:
 
                 status.write("🗓️ Mapeando e garantindo cabeçalhos exatos...")
                 
-                cabecalho_base = ["Data/Hora", "Quem Gastou", "Descrição", "Categoria", "Forma de Pagamento", "Valor"]
+                cabecalho_base = ["Data/Hora", "Quem Gastou", "Descrição", "Categoria", "Forma de Pagamento", "Banco/Emissor", "Valor"]
                 cabecalho_atual = worksheet.row_values(1)
                 
                 meses_existentes = []
-                if len(cabecalho_atual) > 6:
-                    meses_existentes = [m for m in cabecalho_atual[6:] if m.strip()]
+                if len(cabecalho_atual) > len(cabecalho_base):
+                    meses_existentes = [m for m in cabecalho_atual[len(cabecalho_base):] if m.strip()]
                 
                 cabecalho_final = cabecalho_base + [m for m in meses_existentes if m not in cabecalho_base]
 
                 data_hoje = datetime.now() - timedelta(hours=3)
-                detalhe_pagamento = f"{forma_pagamento} ({banco_emissor})"
                 valor_parcela = round(valor_gasto / num_parcelas, 2) if parcelado and num_parcelas > 1 else valor_gasto
 
                 parcelas_info = []
@@ -308,7 +307,8 @@ with aba1:
                 linha_dados[cabecalho_final.index("Quem Gastou")] = quem_gastou
                 linha_dados[cabecalho_final.index("Descrição")] = descricao_gasto if not parcelado else f"{descricao_gasto} ({num_parcelas}x)"
                 linha_dados[cabecalho_final.index("Categoria")] = categoria_final
-                linha_dados[cabecalho_final.index("Forma de Pagamento")] = detalhe_pagamento
+                linha_dados[cabecalho_final.index("Forma de Pagamento")] = forma_pagamento
+                linha_dados[cabecalho_final.index("Banco/Emissor")] = banco_emissor
                 linha_dados[cabecalho_final.index("Valor")] = float(valor_gasto)
 
                 for p in parcelas_info:
@@ -337,7 +337,7 @@ with aba1:
                 st.rerun()
 
 # ==========================================
-# ABA 2: GRÁFICOS E ANÁLISES FINANCEIRAS
+# ABA 2: GRÁFICOS E RELATÓRIOS
 # ==========================================
 with aba2:
     st.markdown("<h2 style='text-align: center;'>📊 Central de Gráficos e Balanços</h2>", unsafe_allow_html=True)
@@ -360,7 +360,7 @@ with aba2:
             
             col_cat = next((c for c in df.columns if "categoria" in c.lower()), None)
             col_quem = next((c for c in df.columns if "quem" in c.lower() or "gastou" in c.lower()), None)
-            col_desc = next((c for c in df.columns if "desc" in c.lower()), None)
+            col_banco = next((c for c in df.columns if "banco" in c.lower() or "emissor" in c.lower()), None)
             
             colunas_meses = [c for c in df.columns if "/" in c or any(m in c.lower() for m in ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"])]
 
@@ -382,145 +382,115 @@ with aba2:
                     st.metric(label=f"💰 Total Gasto em {mes_selecionado}", value=f"R$ {total_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                     st.markdown("---")
                     
-                    col_m1, col_m2 = st.columns(2)
+                    col_m1, col_m2, col_m3 = st.columns(3)
+                    
+                    # Gráfico 1: Categoria
                     with col_m1:
-                        st.markdown("#### Gastos por Categoria (Mês)")
+                        st.markdown("#### Por Categoria")
                         if col_cat and not df_mes_filtrado.empty:
                             df_c = df_mes_filtrado.groupby(col_cat, as_index=False)["Valor_Mes"].sum()
                             df_c = df_c[df_c["Valor_Mes"] > 0]
-                            
                             if not df_c.empty:
-                                fig_cm = px.pie(
-                                    df_c, 
-                                    names=col_cat, 
-                                    values="Valor_Mes",
-                                    hole=0.4,
-                                    template="plotly_white"
-                                )
-                                fig_cm.update_traces(
-                                    textinfo="percent+label",
-                                    hovertemplate="<b>%{label}</b><br>Valor: R$ %{value:,.2f}<br>Porcentagem: %{percent}<extra></extra>"
-                                )
-                                fig_cm.update_layout(margin=dict(t=30, b=30, l=20, r=20), height=400, showlegend=True)
-                                st.plotly_chart(fig_cm, use_container_width=True)
+                                fig = px.pie(df_c, names=col_cat, values="Valor_Mes", hole=0.4, template="plotly_white")
+                                fig.update_traces(textinfo="percent+label", hovertemplate="<b>%{label}</b><br>R$ %{value:,.2f}<br>%{percent}<extra></extra>")
+                                fig.update_layout(margin=dict(t=20, b=20, l=10, r=10), height=350, showlegend=True)
+                                st.plotly_chart(fig, use_container_width=True)
                             else:
-                                st.info("Nenhum gasto nesta categoria no mês.")
+                                st.info("Sem dados.")
                         else:
-                            st.info("Nenhum gasto neste mês.")
-                            
+                            st.info("Sem dados.")
+
+                    # Gráfico 2: Quem Gastou
                     with col_m2:
-                        st.markdown("#### Quem Gastou Mais (Mês)")
+                        st.markdown("#### Quem Gastou")
                         if col_quem and not df_mes_filtrado.empty:
                             df_q = df_mes_filtrado.groupby(col_quem, as_index=False)["Valor_Mes"].sum()
                             df_q = df_q[df_q["Valor_Mes"] > 0]
-                            
                             if not df_q.empty:
-                                fig_qm = px.pie(
-                                    df_q, 
-                                    names=col_quem, 
-                                    values="Valor_Mes",
-                                    hole=0.4,
-                                    template="plotly_white"
-                                )
-                                fig_qm.update_traces(
-                                    textinfo="percent+label",
-                                    hovertemplate="<b>%{label}</b><br>Valor: R$ %{value:,.2f}<br>Porcentagem: %{percent}<extra></extra>"
-                                )
-                                fig_qm.update_layout(margin=dict(t=30, b=30, l=20, r=20), height=400, showlegend=True)
-                                st.plotly_chart(fig_qm, use_container_width=True)
+                                fig = px.pie(df_q, names=col_quem, values="Valor_Mes", hole=0.4, template="plotly_white")
+                                fig.update_traces(textinfo="percent+label", hovertemplate="<b>%{label}</b><br>R$ %{value:,.2f}<br>%{percent}<extra></extra>")
+                                fig.update_layout(margin=dict(t=20, b=20, l=10, r=10), height=350, showlegend=True)
+                                st.plotly_chart(fig, use_container_width=True)
                             else:
-                                st.info("Nenhum dado de quem gastou neste mês.")
+                                st.info("Sem dados.")
                         else:
-                            st.info("Nenhum dado de quem gastou neste mês.")
+                            st.info("Sem dados.")
+
+                    # Gráfico 3: Banco / Emissor
+                    with col_m3:
+                        st.markdown("#### Por Banco / Cartão")
+                        if col_banco and not df_mes_filtrado.empty:
+                            df_b = df_mes_filtrado.groupby(col_banco, as_index=False)["Valor_Mes"].sum()
+                            df_b = df_b[df_b["Valor_Mes"] > 0]
+                            if not df_b.empty:
+                                fig = px.pie(df_b, names=col_banco, values="Valor_Mes", hole=0.4, template="plotly_white")
+                                fig.update_traces(textinfo="percent+label", hovertemplate="<b>%{label}</b><br>R$ %{value:,.2f}<br>%{percent}<extra></extra>")
+                                fig.update_layout(margin=dict(t=20, b=20, l=10, r=10), height=350, showlegend=True)
+                                st.plotly_chart(fig, use_container_width=True)
+                            else:
+                                st.info("Sem dados.")
+                        else:
+                            st.info("Sem dados.")
                 else:
                     st.info("Ainda não há colunas de meses cadastradas na planilha.")
 
             # ==========================================
-            # SUB-ABA 2: BALANÇO ANUAL (Cálculo explícito de percentual sobre o total das colunas de meses)
+            # SUB-ABA 2: BALANÇO ANUAL
             # ==========================================
             with sub_aba2:
                 st.markdown("### 🌐 Panorama Geral do Ano")
                 
                 if colunas_meses:
                     df_anual = df.copy()
-                    
-                    # Converte explicitamente cada coluna de mês para número
                     for m in colunas_meses:
                         df_anual[m] = df_anual[m].apply(converter_valor_limpo)
                     
-                    # 1. Soma o valor real correspondente às parcelas do ano para cada linha de gasto
                     df_anual["Total_Linha_Ano"] = df_anual[colunas_meses].sum(axis=1)
-                    
-                    # 2. Descobre o valor total geral somando todas as colunas de meses reais (Ex: 894,00)
                     total_geral_ano = df_anual[colunas_meses].sum().sum()
                     
-                    st.metric(label="💰 Total Geral Acumulado no Ano", value=f"R$ {total_geral_ano:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                    st.metric(label="💰 Total Geral Acumulado no Ano (100%)", value=f"R$ {total_geral_ano:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                     st.markdown("---")
                     
-                    col_a1, col_a2 = st.columns(2)
+                    col_a1, col_a2, col_a3 = st.columns(3)
+                    
                     with col_a1:
-                        st.markdown("#### Gastos por Categoria (Anual)")
+                        st.markdown("#### Por Categoria (Anual)")
                         if col_cat and not df_anual.empty:
-                            # Agrupa por categoria somando o total do ano
-                            df_cat_ano = df_anual.groupby(col_cat, as_index=False)["Total_Linha_Ano"].sum()
-                            df_cat_ano = df_cat_ano[df_cat_ano["Total_Linha_Ano"] > 0]
-                            
-                            if total_geral_ano > 0:
-                                # 3. Calcula matematicamente a porcentagem exata solicitada: (Valor Individual / Total Geral) * 100
-                                df_cat_ano["Percentual"] = (df_cat_ano["Total_Linha_Ano"] / total_geral_ano) * 100
+                            df_ca = df_anual.groupby(col_cat, as_index=False)["Total_Linha_Ano"].sum()
+                            df_ca = df_ca[df_ca["Total_Linha_Ano"] > 0]
+                            if not df_ca.empty:
+                                fig = px.pie(df_ca, names=col_cat, values="Total_Linha_Ano", hole=0.4, template="plotly_white")
+                                fig.update_traces(textinfo="percent+label", hovertemplate="<b>%{label}</b><br>R$ %{value:,.2f}<br>%{percent}<extra></extra>")
+                                fig.update_layout(margin=dict(t=20, b=20, l=10, r=10), height=350, showlegend=True)
+                                st.plotly_chart(fig, use_container_width=True)
                             else:
-                                df_cat_ano["Percentual"] = 0.0
-                            
-                            if not df_cat_ano.empty:
-                                fig_ca = px.pie(
-                                    df_cat_ano, 
-                                    names=col_cat, 
-                                    values="Total_Linha_Ano",
-                                    hole=0.4,
-                                    template="plotly_white"
-                                )
-                                # Configura o texto da fatia para exibir explicitamente o valor calculado e a porcentagem correta
-                                fig_ca.update_traces(
-                                    textinfo="percent+label",
-                                    hovertemplate="<b>%{label}</b><br>Valor: R$ %{value:,.2f}<br>Porcentagem: %{percent}<extra></extra>"
-                                )
-                                fig_ca.update_layout(margin=dict(t=30, b=30, l=20, r=20), height=400, showlegend=True)
-                                st.plotly_chart(fig_ca, use_container_width=True)
-                            else:
-                                st.info("Sem dados para exibir.")
-                        else:
-                            st.info("Sem categorias encontradas.")
-                            
+                                st.info("Sem dados.")
+
                     with col_a2:
-                        st.markdown("#### Quem Gastou Mais (Anual)")
+                        st.markdown("#### Quem Gastou (Anual)")
                         if col_quem and not df_anual.empty:
-                            # Agrupa por pessoa somando o total do ano
-                            df_quem_ano = df_anual.groupby(col_quem, as_index=False)["Total_Linha_Ano"].sum()
-                            df_quem_ano = df_quem_ano[df_quem_ano["Total_Linha_Ano"] > 0]
-                            
-                            if total_geral_ano > 0:
-                                df_quem_ano["Percentual"] = (df_quem_ano["Total_Linha_Ano"] / total_geral_ano) * 100
+                            df_qa = df_anual.groupby(col_quem, as_index=False)["Total_Linha_Ano"].sum()
+                            df_qa = df_qa[df_qa["Total_Linha_Ano"] > 0]
+                            if not df_qa.empty:
+                                fig = px.pie(df_qa, names=col_quem, values="Total_Linha_Ano", hole=0.4, template="plotly_white")
+                                fig.update_traces(textinfo="percent+label", hovertemplate="<b>%{label}</b><br>R$ %{value:,.2f}<br>%{percent}<extra></extra>")
+                                fig.update_layout(margin=dict(t=20, b=20, l=10, r=10), height=350, showlegend=True)
+                                st.plotly_chart(fig, use_container_width=True)
                             else:
-                                df_quem_ano["Percentual"] = 0.0
-                            
-                            if not df_quem_ano.empty:
-                                fig_qa = px.pie(
-                                    df_quem_ano, 
-                                    names=col_quem, 
-                                    values="Total_Linha_Ano",
-                                    hole=0.4,
-                                    template="plotly_white"
-                                )
-                                fig_qa.update_traces(
-                                    textinfo="percent+label",
-                                    hovertemplate="<b>%{label}</b><br>Valor: R$ %{value:,.2f}<br>Porcentagem: %{percent}<extra></extra>"
-                                )
-                                fig_qa.update_layout(margin=dict(t=30, b=30, l=20, r=20), height=400, showlegend=True)
-                                st.plotly_chart(fig_qa, use_container_width=True)
+                                st.info("Sem dados.")
+
+                    with col_a3:
+                        st.markdown("#### Por Banco (Anual)")
+                        if col_banco and not df_anual.empty:
+                            df_ba = df_anual.groupby(col_banco, as_index=False)["Total_Linha_Ano"].sum()
+                            df_ba = df_ba[df_ba["Total_Linha_Ano"] > 0]
+                            if not df_ba.empty:
+                                fig = px.pie(df_ba, names=col_banco, values="Total_Linha_Ano", hole=0.4, template="plotly_white")
+                                fig.update_traces(textinfo="percent+label", hovertemplate="<b>%{label}</b><br>R$ %{value:,.2f}<br>%{percent}<extra></extra>")
+                                fig.update_layout(margin=dict(t=20, b=20, l=10, r=10), height=350, showlegend=True)
+                                st.plotly_chart(fig, use_container_width=True)
                             else:
-                                st.info("Sem dados para exibir.")
-                        else:
-                            st.info("Sem dados de quem gastou.")
+                                st.info("Sem dados.")
                 else:
                     st.info("Ainda não há colunas de meses cadastradas na planilha.")
 
@@ -529,16 +499,8 @@ with aba2:
             # ==========================================
             with sub_aba3:
                 st.markdown("### 💳 Acompanhamento de Parcelas e Extensões")
-                st.write("Aqui você visualiza todas as linhas de despesas que possuem desdobramentos nas colunas de meses à direita.")
-                
                 if colunas_meses:
-                    colunas_parcelas_view = [col_desc, col_cat, col_quem] + colunas_meses
-                    colunas_existentes = [c for c in colunas_parcelas_view if c and c in df.columns]
-                    
-                    if colunas_existentes:
-                        st.dataframe(df[colunas_existentes], use_container_width=True)
-                    else:
-                        st.dataframe(df, use_container_width=True)
+                    st.dataframe(df, use_container_width=True)
                 else:
                     st.info("Nenhuma coluna de parcelamento/mês identificada.")
 
