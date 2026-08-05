@@ -362,11 +362,18 @@ with aba2:
             dados_linhas = rows[1:]
             df = pd.DataFrame(dados_linhas, columns=cabecalho)
             
+            # Garantir conversão da coluna Valor principal e colunas de meses
+            if "Valor" in df.columns:
+                df["Valor"] = df["Valor"].apply(converter_valor_limpo)
+            
+            colunas_meses = [c for c in df.columns if "/" in c or any(m in c.lower() for m in ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"])]
+            
+            for m in colunas_meses:
+                df[m] = df[m].apply(converter_valor_limpo)
+
             col_cat = next((c for c in df.columns if "categoria" in c.lower()), None)
             col_quem = next((c for c in df.columns if "quem" in c.lower() or "gastou" in c.lower()), None)
             col_banco = next((c for c in df.columns if "banco" in c.lower() or "emissor" in c.lower()), None)
-            
-            colunas_meses = [c for c in df.columns if "/" in c or any(m in c.lower() for m in ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"])]
 
             sub_aba1, sub_aba2, sub_aba3 = st.tabs(["📅 Balanço Mensal", "🌐 Balanço Anual", "💳 Controle de Parcelamentos"])
 
@@ -379,8 +386,9 @@ with aba2:
                     mes_selecionado = st.selectbox("Escolha o mês:", colunas_meses, key="select_mes")
                     
                     df_mes = df.copy()
-                    df_mes["Valor_Mes"] = df_mes[mes_selecionado].apply(converter_valor_limpo)
-                    df_mes_filtrado = df_mes[df_mes["Valor_Mes"] > 0]
+                    # O valor do mês específico já foi convertido com converter_valor_limpo acima
+                    df_mes_filtrado = df_mes[df_mes[mes_selecionado] > 0].copy()
+                    df_mes_filtrado["Valor_Mes"] = df_mes_filtrado[mes_selecionado]
                     
                     total_mes = df_mes_filtrado["Valor_Mes"].sum()
                     st.metric(label=f"💰 Total Gasto em {mes_selecionado} (100%)", value=f"R$ {total_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
@@ -446,11 +454,9 @@ with aba2:
                 
                 if colunas_meses:
                     df_anual = df.copy()
-                    for m in colunas_meses:
-                        df_anual[m] = df_anual[m].apply(converter_valor_limpo)
-                    
+                    # Criamos uma coluna de total anual somando todas as colunas de meses numéricas de cada linha
                     df_anual["Total_Linha_Ano"] = df_anual[colunas_meses].sum(axis=1)
-                    total_geral_ano = df_anual[colunas_meses].sum().sum()
+                    total_geral_ano = df_anual["Total_Linha_Ano"].sum()
                     
                     st.metric(label="💰 Total Geral Acumulado no Ano (100%)", value=f"R$ {total_geral_ano:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                     st.markdown("---")
