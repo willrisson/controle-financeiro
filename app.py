@@ -354,10 +354,26 @@ with aba2:
         
         if dados:
             df = pd.DataFrame(dados)
+            
+            # Converte a coluna de valor para número para garantir os cálculos corretos
+            if "Valor" in df.columns:
+                df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce").fillna(0.0)
+                total_geral = df["Valor"].sum()
+                
+                # Exibe o card com o Valor Total Geral
+                st.metric(label="💰 Total Geral de Despesas", value=f"R$ {total_geral:,.2f}")
+                st.markdown("---")
+
             st.markdown("### 📈 Visualização de Gastos")
             if "Categoria" in df.columns and "Valor" in df.columns:
-                fig = px.pie(df, names="Categoria", values="Valor", title="Gastos Totais por Categoria")
-                fig.update_traces(textinfo='percent+label+value', texttemplate='%{label}: R$ %{value:,.2f} (%{percent})')
+                # Agrupa os valores por categoria para o gráfico somar corretamente
+                df_grouped = df.groupby("Categoria", as_index=False)["Valor"].sum()
+                
+                fig = px.pie(df_grouped, names="Categoria", values="Valor", title="Gastos Totais por Categoria")
+                fig.update_traces(
+                    textinfo='label+value+percent', 
+                    texttemplate='%{label}<br>R$ %{value:,.2f}<br>(%{percent})'
+                )
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.dataframe(df)
