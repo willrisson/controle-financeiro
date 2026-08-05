@@ -389,7 +389,7 @@ with aba2:
                             st.markdown("#### Gastos por Categoria (Mês)")
                             if col_cat and not df_mes_filtrado.empty:
                                 df_c = df_mes_filtrado.groupby(col_cat, as_index=False)["Valor_Mes"].sum()
-                                df_c["Valor_Mes"] = pd.to_numeric(df_c["Valor_Mes"])
+                                df_c["Valor_Mes"] = pd.to_numeric(df_c["Valor_Mes"], errors='coerce').fillna(0)
                                 
                                 total_c = df_c["Valor_Mes"].sum()
                                 df_c["Percentual"] = (df_c["Valor_Mes"] / total_c * 100).round(2)
@@ -414,7 +414,7 @@ with aba2:
                             st.markdown("#### Quem Gastou Mais (Mês)")
                             if col_quem and not df_mes_filtrado.empty:
                                 df_q = df_mes_filtrado.groupby(col_quem, as_index=False)["Valor_Mes"].sum()
-                                df_q["Valor_Mes"] = pd.to_numeric(df_q["Valor_Mes"])
+                                df_q["Valor_Mes"] = pd.to_numeric(df_q["Valor_Mes"], errors='coerce').fillna(0)
                                 
                                 total_q = df_q["Valor_Mes"].sum()
                                 df_q["Percentual"] = (df_q["Valor_Mes"] / total_q * 100).round(2)
@@ -451,7 +451,7 @@ with aba2:
                         st.markdown("#### Gastos por Categoria (Anual)")
                         if col_cat:
                             df_cat_ano = df.groupby(col_cat, as_index=False)["Valor_Num"].sum()
-                            df_cat_ano["Valor_Num"] = pd.to_numeric(df_cat_ano["Valor_Num"])
+                            df_cat_ano["Valor_Num"] = pd.to_numeric(df_cat_ano["Valor_Num"], errors='coerce').fillna(0)
                             
                             total_cat_ano = df_cat_ano["Valor_Num"].sum()
                             df_cat_ano["Percentual"] = (df_cat_ano["Valor_Num"] / total_cat_ano * 100).round(2)
@@ -474,7 +474,7 @@ with aba2:
                         st.markdown("#### Quem Gastou Mais (Anual)")
                         if col_quem:
                             df_quem_ano = df.groupby(col_quem, as_index=False)["Valor_Num"].sum()
-                            df_quem_ano["Valor_Num"] = pd.to_numeric(df_quem_ano["Valor_Num"])
+                            df_quem_ano["Valor_Num"] = pd.to_numeric(df_quem_ano["Valor_Num"], errors='coerce').fillna(0)
                             
                             total_quem_ano = df_quem_ano["Valor_Num"].sum()
                             df_quem_ano["Percentual"] = (df_quem_ano["Valor_Num"] / total_quem_ano * 100).round(2)
