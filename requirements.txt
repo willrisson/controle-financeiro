@@ -1,4 +1,5 @@
-streamlit
+streamlit==1.32.2
 gspread
 google-auth
-requests
+groq
+pandas
