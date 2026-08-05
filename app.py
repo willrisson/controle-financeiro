@@ -355,18 +355,18 @@ with aba2:
         if dados:
             df = pd.DataFrame(dados)
             
-            # Conversão limpa e forçada para o padrão da planilha
+            # Conversão exata ajustando a escala dos valores vindos do Sheets
             if "Valor" in df.columns:
                 def converter_para_float(val):
                     if pd.isna(val):
                         return 0.0
                     val_str = str(val).replace("R$", "").strip()
-                    # Substitui a vírgula por ponto para o Python calcular corretamente
+                    # Remove pontos e troca vírgula por ponto para o cálculo
                     val_str = val_str.replace(".", "").replace(",", ".")
                     try:
                         num = float(val_str)
-                        # Se o valor vier multiplicado por mil por causa da formatação do sheets, ajusta
-                        if num > 1000:
+                        # Ajuste preciso para a escala correta (ex: 10000 vira 100.0)
+                        if num >= 1000:
                             num = num / 100
                         return num
                     except:
@@ -375,7 +375,7 @@ with aba2:
                 df["Valor_Num"] = df["Valor"].apply(converter_para_float)
                 total_geral = df["Valor_Num"].sum()
                 
-                st.metric(label="💰 Total Geral de Despesas", value=f"R$ {total_geral:,.2f}")
+                st.metric(label="💰 Total Geral de Despesas", value=f"R$ {total_geral:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                 st.markdown("---")
 
             st.markdown("### 📈 Visualização de Gastos")
