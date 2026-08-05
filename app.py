@@ -356,7 +356,8 @@ with aba2:
             df = pd.DataFrame(dados)
             st.markdown("### 📈 Visualização de Gastos")
             if "Categoria" in df.columns and "Valor" in df.columns:
-                # Gráfico de pizza por categoria
-               fig = px.pie(df, names="Categoria", values="Valor", title="Gastos Totais por Categoria")
+               if "Categoria" in df.columns and "Valor" in df.columns:
+                # Gráfico de pizza por categoria mostrando valor e percentual
+                fig = px.pie(df, names="Categoria", values="Valor", title="Gastos Totais por Categoria")
                 fig.update_traces(textinfo='percent+label+value', texttemplate='%{label}: R$ %{value:,.2f} (%{percent})')
                 st.plotly_chart(fig, use_container_width=True)
