@@ -394,18 +394,23 @@ with aba2:
                                 total_c = df_c["Valor_Mes"].sum()
                                 df_c["Percentual"] = (df_c["Valor_Mes"] / total_c * 100).round(2)
                                 df_c["Valor_Fmt"] = df_c["Valor_Mes"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                                df_c["Texto_Grafico"] = df_c["Valor_Fmt"] + " (" + df_c["Percentual"].astype(str) + "%)"
+                                
+                                max_val_c = df_c["Valor_Mes"].max() if not df_c.empty else 1
                                 
                                 fig_cm = px.bar(
                                     df_c, 
                                     x=col_cat, 
                                     y="Valor_Mes",
+                                    text="Texto_Grafico",
                                     labels={col_cat: "Categoria", "Valor_Mes": "Valor (R$)"}
                                 )
-                                fig_cm.update_traces(
-                                    text=df_c["Valor_Fmt"] + "<br>(" + df_c["Percentual"].astype(str) + "%)",
-                                    textposition='outside'
+                                fig_cm.update_traces(textposition='outside')
+                                fig_cm.update_layout(
+                                    yaxis=dict(tickprefix="R$ ", range=[0, max_val_c * 1.25]),
+                                    uniformtext_minsize=8, 
+                                    uniformtext_mode='hide'
                                 )
-                                fig_cm.update_layout(yaxis=dict(tickprefix="R$ "))
                                 st.plotly_chart(fig_cm, use_container_width=True)
                             else:
                                 st.info("Nenhum gasto neste mês.")
@@ -419,18 +424,23 @@ with aba2:
                                 total_q = df_q["Valor_Mes"].sum()
                                 df_q["Percentual"] = (df_q["Valor_Mes"] / total_q * 100).round(2)
                                 df_q["Valor_Fmt"] = df_q["Valor_Mes"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                                df_q["Texto_Grafico"] = df_q["Valor_Fmt"] + " (" + df_q["Percentual"].astype(str) + "%)"
+                                
+                                max_val_q = df_q["Valor_Mes"].max() if not df_q.empty else 1
                                 
                                 fig_qm = px.bar(
                                     df_q, 
                                     x=col_quem, 
                                     y="Valor_Mes",
+                                    text="Texto_Grafico",
                                     labels={col_quem: "Membro", "Valor_Mes": "Valor (R$)"}
                                 )
-                                fig_qm.update_traces(
-                                    text=df_q["Valor_Fmt"] + "<br>(" + df_q["Percentual"].astype(str) + "%)",
-                                    textposition='outside'
+                                fig_qm.update_traces(textposition='outside')
+                                fig_qm.update_layout(
+                                    yaxis=dict(tickprefix="R$ ", range=[0, max_val_q * 1.25]),
+                                    uniformtext_minsize=8, 
+                                    uniformtext_mode='hide'
                                 )
-                                fig_qm.update_layout(yaxis=dict(tickprefix="R$ "))
                                 st.plotly_chart(fig_qm, use_container_width=True)
                             else:
                                 st.info("Nenhum dado de quem gastou neste mês.")
@@ -456,18 +466,23 @@ with aba2:
                             total_cat_ano = df_cat_ano["Valor_Num"].sum()
                             df_cat_ano["Percentual"] = (df_cat_ano["Valor_Num"] / total_cat_ano * 100).round(2)
                             df_cat_ano["Valor_Fmt"] = df_cat_ano["Valor_Num"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                            df_cat_ano["Texto_Grafico"] = df_cat_ano["Valor_Fmt"] + " (" + df_cat_ano["Percentual"].astype(str) + "%)"
+                            
+                            max_val_ca = df_cat_ano["Valor_Num"].max() if not df_cat_ano.empty else 1
                             
                             fig_ca = px.bar(
                                 df_cat_ano, 
                                 x=col_cat, 
                                 y="Valor_Num",
+                                text="Texto_Grafico",
                                 labels={col_cat: "Categoria", "Valor_Num": "Valor (R$)"}
                             )
-                            fig_ca.update_traces(
-                                text=df_cat_ano["Valor_Fmt"] + "<br>(" + df_cat_ano["Percentual"].astype(str) + "%)",
-                                textposition='outside'
+                            fig_ca.update_traces(textposition='outside')
+                            fig_ca.update_layout(
+                                yaxis=dict(tickprefix="R$ ", range=[0, max_val_ca * 1.25]),
+                                uniformtext_minsize=8,
+                                uniformtext_mode='hide'
                             )
-                            fig_ca.update_layout(yaxis=dict(tickprefix="R$ "))
                             st.plotly_chart(fig_ca, use_container_width=True)
                             
                     with col_a2:
@@ -479,18 +494,23 @@ with aba2:
                             total_quem_ano = df_quem_ano["Valor_Num"].sum()
                             df_quem_ano["Percentual"] = (df_quem_ano["Valor_Num"] / total_quem_ano * 100).round(2)
                             df_quem_ano["Valor_Fmt"] = df_quem_ano["Valor_Num"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                            df_quem_ano["Texto_Grafico"] = df_quem_ano["Valor_Fmt"] + " (" + df_quem_ano["Percentual"].astype(str) + "%)"
+                            
+                            max_val_qa = df_quem_ano["Valor_Num"].max() if not df_quem_ano.empty else 1
                             
                             fig_qa = px.bar(
                                 df_quem_ano, 
                                 x=col_quem, 
                                 y="Valor_Num",
+                                text="Texto_Grafico",
                                 labels={col_quem: "Membro", "Valor_Num": "Valor (R$)"}
                             )
-                            fig_qa.update_traces(
-                                text=df_quem_ano["Valor_Fmt"] + "<br>(" + df_quem_ano["Percentual"].astype(str) + "%)",
-                                textposition='outside'
+                            fig_qa.update_traces(textposition='outside')
+                            fig_qa.update_layout(
+                                yaxis=dict(tickprefix="R$ ", range=[0, max_val_qa * 1.25]),
+                                uniformtext_minsize=8,
+                                uniformtext_mode='hide'
                             )
-                            fig_qa.update_layout(yaxis=dict(tickprefix="R$ "))
                             st.plotly_chart(fig_qa, use_container_width=True)
 
                 # ==========================================
