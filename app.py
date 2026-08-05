@@ -91,6 +91,19 @@ def classificar_categoria_groq(descricao, status_container, categorias_disponive
         pass
     return "Outros"
 
+def converter_valor_limpo(val):
+    if not val:
+        return 0.0
+    val_str = str(val).replace("R$", "").replace(" ", "").strip()
+    if "," in val_str and "." in val_str:
+        val_str = val_str.replace(".", "").replace(",", ".")
+    elif "," in val_str:
+        val_str = val_str.replace(",", ".")
+    try:
+        return float(val_str)
+    except:
+        return 0.0
+
 aba1, aba2 = st.tabs(["📝 Lançar Gasto", "📊 Gráficos por Mês"])
 
 with aba1:
@@ -345,133 +358,114 @@ with aba2:
             dados_linhas = rows[1:]
             df = pd.DataFrame(dados_linhas, columns=cabecalho)
             
-            col_valor = next((c for c in df.columns if "valor" in c.lower()), None)
             col_cat = next((c for c in df.columns if "categoria" in c.lower()), None)
             col_quem = next((c for c in df.columns if "quem" in c.lower() or "gastou" in c.lower()), None)
             col_desc = next((c for c in df.columns if "desc" in c.lower()), None)
             
-            if col_valor:
-                def converter_valor_limpo(val):
-                    if not val:
-                        return 0.0
-                    val_str = str(val).replace("R$", "").replace(" ", "").strip()
-                    if "," in val_str:
-                        val_str = val_str.replace(".", "").replace(",", ".")
-                    try:
-                        return float(val_str)
-                    except:
-                        return 0.0
+            colunas_meses = [c for c in df.columns if "/" in c or any(m in c.lower() for m in ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"])]
 
-                df["Valor_Num"] = df[col_valor].apply(converter_valor_limpo).astype(float)
-                
-                colunas_meses = [c for c in df.columns if "/" in c or any(m in c.lower() for m in ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"])]
+            sub_aba1, sub_aba2, sub_aba3 = st.tabs(["📅 Balanço Mensal", "🌐 Balanço Anual", "💳 Controle de Parcelamentos"])
 
-                sub_aba1, sub_aba2, sub_aba3 = st.tabs(["📅 Balanço Mensal", "🌐 Balanço Anual", "💳 Controle de Parcelamentos"])
-
-                # ==========================================
-                # SUB-ABA 1: BALANÇO MENSAL
-                # ==========================================
-                with sub_aba1:
-                    st.markdown("### 🗓️ Filtrar por Mês Específico")
-                    if colunas_meses:
-                        mes_selecionado = st.selectbox("Escolha o mês:", colunas_meses, key="select_mes")
-                        
-                        df_mes = df.copy()
-                        df_mes["Valor_Mes"] = df_mes[mes_selecionado].apply(converter_valor_limpo).astype(float)
-                        df_mes_filtrado = df_mes[df_mes["Valor_Mes"] > 0]
-                        
-                        total_mes = df_mes_filtrado["Valor_Mes"].sum()
-                        st.metric(label=f"💰 Total Gasto em {mes_selecionado}", value=f"R$ {total_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-                        st.markdown("---")
-                        
-                        col_m1, col_m2 = st.columns(2)
-                        with col_m1:
-                            st.markdown("#### Gastos por Categoria (Mês)")
-                            if col_cat and not df_mes_filtrado.empty:
-                                # Agrupando explicitamente para somar o valor em dinheiro de cada categoria
-                                df_c = df_mes_filtrado.groupby(col_cat, as_index=False)["Valor_Mes"].sum()
-                                df_c["Valor_Mes"] = pd.to_numeric(df_c["Valor_Mes"], errors='coerce').fillna(0)
-                                df_c = df_c[df_c["Valor_Mes"] > 0]
-                                
-                                if not df_c.empty:
-                                    fig_cm = px.pie(
-                                        df_c, 
-                                        names=col_cat, 
-                                        values="Valor_Mes", # Força o uso da coluna de soma financeira
-                                        hole=0.4,
-                                        template="plotly_white"
-                                    )
-                                    fig_cm.update_traces(
-                                        textinfo="percent+label",
-                                        hovertemplate="<b>%{label}</b><br>Valor: R$ %{value:,.2f}<br>Porcentagem: %{percent}<extra></extra>"
-                                    )
-                                    fig_cm.update_layout(
-                                        margin=dict(t=30, b=30, l=20, r=20),
-                                        height=400,
-                                        showlegend=True
-                                    )
-                                    st.plotly_chart(fig_cm, use_container_width=True)
-                                else:
-                                    st.info("Nenhum gasto nesta categoria no mês.")
+            # ==========================================
+            # SUB-ABA 1: BALANÇO MENSAL
+            # ==========================================
+            with sub_aba1:
+                st.markdown("### 🗓️ Filtrar por Mês Específico")
+                if colunas_meses:
+                    mes_selecionado = st.selectbox("Escolha o mês:", colunas_meses, key="select_mes")
+                    
+                    df_mes = df.copy()
+                    df_mes["Valor_Mes"] = df_mes[mes_selecionado].apply(converter_valor_limpo)
+                    df_mes_filtrado = df_mes[df_mes["Valor_Mes"] > 0]
+                    
+                    total_mes = df_mes_filtrado["Valor_Mes"].sum()
+                    st.metric(label=f"💰 Total Gasto em {mes_selecionado}", value=f"R$ {total_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                    st.markdown("---")
+                    
+                    col_m1, col_m2 = st.columns(2)
+                    with col_m1:
+                        st.markdown("#### Gastos por Categoria (Mês)")
+                        if col_cat and not df_mes_filtrado.empty:
+                            df_c = df_mes_filtrado.groupby(col_cat, as_index=False)["Valor_Mes"].sum()
+                            df_c = df_c[df_c["Valor_Mes"] > 0]
+                            
+                            if not df_c.empty:
+                                fig_cm = px.pie(
+                                    df_c, 
+                                    names=col_cat, 
+                                    values="Valor_Mes",
+                                    hole=0.4,
+                                    template="plotly_white"
+                                )
+                                fig_cm.update_traces(
+                                    textinfo="percent+label",
+                                    hovertemplate="<b>%{label}</b><br>Valor: R$ %{value:,.2f}<br>Porcentagem: %{percent}<extra></extra>"
+                                )
+                                fig_cm.update_layout(margin=dict(t=30, b=30, l=20, r=20), height=400, showlegend=True)
+                                st.plotly_chart(fig_cm, use_container_width=True)
                             else:
-                                st.info("Nenhum gasto neste mês.")
-                                
-                        with col_m2:
-                            st.markdown("#### Quem Gastou Mais (Mês)")
-                            if col_quem and not df_mes_filtrado.empty:
-                                # Agrupando explicitamente para somar o valor em dinheiro de cada pessoa
-                                df_q = df_mes_filtrado.groupby(col_quem, as_index=False)["Valor_Mes"].sum()
-                                df_q["Valor_Mes"] = pd.to_numeric(df_q["Valor_Mes"], errors='coerce').fillna(0)
-                                df_q = df_q[df_q["Valor_Mes"] > 0]
-                                
-                                if not df_q.empty:
-                                    fig_qm = px.pie(
-                                        df_q, 
-                                        names=col_quem, 
-                                        values="Valor_Mes", # Força o uso da coluna de soma financeira
-                                        hole=0.4,
-                                        template="plotly_white"
-                                    )
-                                    fig_qm.update_traces(
-                                        textinfo="percent+label",
-                                        hovertemplate="<b>%{label}</b><br>Valor: R$ %{value:,.2f}<br>Porcentagem: %{percent}<extra></extra>"
-                                    )
-                                    fig_qm.update_layout(
-                                        margin=dict(t=30, b=30, l=20, r=20),
-                                        height=400,
-                                        showlegend=True
-                                    )
-                                    st.plotly_chart(fig_qm, use_container_width=True)
-                                else:
-                                    st.info("Nenhum dado de quem gastou neste mês.")
+                                st.info("Nenhum gasto nesta categoria no mês.")
+                        else:
+                            st.info("Nenhum gasto neste mês.")
+                            
+                    with col_m2:
+                        st.markdown("#### Quem Gastou Mais (Mês)")
+                        if col_quem and not df_mes_filtrado.empty:
+                            df_q = df_mes_filtrado.groupby(col_quem, as_index=False)["Valor_Mes"].sum()
+                            df_q = df_q[df_q["Valor_Mes"] > 0]
+                            
+                            if not df_q.empty:
+                                fig_qm = px.pie(
+                                    df_q, 
+                                    names=col_quem, 
+                                    values="Valor_Mes",
+                                    hole=0.4,
+                                    template="plotly_white"
+                                )
+                                fig_qm.update_traces(
+                                    textinfo="percent+label",
+                                    hovertemplate="<b>%{label}</b><br>Valor: R$ %{value:,.2f}<br>Porcentagem: %{percent}<extra></extra>"
+                                )
+                                fig_qm.update_layout(margin=dict(t=30, b=30, l=20, r=20), height=400, showlegend=True)
+                                st.plotly_chart(fig_qm, use_container_width=True)
                             else:
                                 st.info("Nenhum dado de quem gastou neste mês.")
-                    else:
-                        st.info("Ainda não há colunas de meses cadastradas na planilha.")
+                        else:
+                            st.info("Nenhum dado de quem gastou neste mês.")
+                else:
+                    st.info("Ainda não há colunas de meses cadastradas na planilha.")
 
-                # ==========================================
-                # SUB-ABA 2: BALANÇO ANUAL
-                # ==========================================
-                with sub_aba2:
-                    st.markdown("### 🌐 Panorama Geral do Ano")
-                    total_geral = df["Valor_Num"].sum()
-                    st.metric(label="💰 Total Geral Acumulado", value=f"R$ {total_geral:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+            # ==========================================
+            # SUB-ABA 2: BALANÇO ANUAL (Baseado na soma real das colunas de meses)
+            # ==========================================
+            with sub_aba2:
+                st.markdown("### 🌐 Panorama Geral do Ano")
+                
+                if colunas_meses:
+                    df_anual = df.copy()
+                    # Converte todas as colunas de meses para numérico
+                    for m in colunas_meses:
+                        df_anual[m] = df_anual[m].apply(converter_valor_limpo)
+                    
+                    # Soma o total real gasto em todas as parcelas do ano para cada linha
+                    df_anual["Total_Ano"] = df_anual[colunas_meses].sum(axis=1)
+                    total_geral = df_anual["Total_Ano"].sum()
+                    
+                    st.metric(label="💰 Total Geral Acumulado no Ano", value=f"R$ {total_geral:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                     st.markdown("---")
                     
                     col_a1, col_a2 = st.columns(2)
                     with col_a1:
                         st.markdown("#### Gastos por Categoria (Anual)")
-                        if col_cat:
-                            # Agrupando explicitamente a soma total do ano por categoria
-                            df_cat_ano = df.groupby(col_cat, as_index=False)["Valor_Num"].sum()
-                            df_cat_ano["Valor_Num"] = pd.to_numeric(df_cat_ano["Valor_Num"], errors='coerce').fillna(0)
-                            df_cat_ano = df_cat_ano[df_cat_ano["Valor_Num"] > 0]
+                        if col_cat and not df_anual.empty:
+                            df_cat_ano = df_anual.groupby(col_cat, as_index=False)["Total_Ano"].sum()
+                            df_cat_ano = df_cat_ano[df_cat_ano["Total_Ano"] > 0]
                             
                             if not df_cat_ano.empty:
                                 fig_ca = px.pie(
                                     df_cat_ano, 
                                     names=col_cat, 
-                                    values="Valor_Num", # Força o somatório em reais
+                                    values="Total_Ano",
                                     hole=0.4,
                                     template="plotly_white"
                                 )
@@ -479,28 +473,24 @@ with aba2:
                                     textinfo="percent+label",
                                     hovertemplate="<b>%{label}</b><br>Valor: R$ %{value:,.2f}<br>Porcentagem: %{percent}<extra></extra>"
                                 )
-                                fig_ca.update_layout(
-                                    margin=dict(t=30, b=30, l=20, r=20),
-                                    height=400,
-                                    showlegend=True
-                                )
+                                fig_ca.update_layout(margin=dict(t=30, b=30, l=20, r=20), height=400, showlegend=True)
                                 st.plotly_chart(fig_ca, use_container_width=True)
                             else:
                                 st.info("Sem dados para exibir.")
+                        else:
+                            st.info("Sem categorias encontradas.")
                             
                     with col_a2:
                         st.markdown("#### Quem Gastou Mais (Anual)")
-                        if col_quem:
-                            # Agrupando explicitamente a soma total do ano por pessoa
-                            df_quem_ano = df.groupby(col_quem, as_index=False)["Valor_Num"].sum()
-                            df_quem_ano["Valor_Num"] = pd.to_numeric(df_quem_ano["Valor_Num"], errors='coerce').fillna(0)
-                            df_quem_ano = df_quem_ano[df_quem_ano["Valor_Num"] > 0]
+                        if col_quem and not df_anual.empty:
+                            df_quem_ano = df_anual.groupby(col_quem, as_index=False)["Total_Ano"].sum()
+                            df_quem_ano = df_quem_ano[df_quem_ano["Total_Ano"] > 0]
                             
                             if not df_quem_ano.empty:
                                 fig_qa = px.pie(
                                     df_quem_ano, 
                                     names=col_quem, 
-                                    values="Valor_Num", # Força o somatório em reais
+                                    values="Total_Ano",
                                     hole=0.4,
                                     template="plotly_white"
                                 )
@@ -508,37 +498,36 @@ with aba2:
                                     textinfo="percent+label",
                                     hovertemplate="<b>%{label}</b><br>Valor: R$ %{value:,.2f}<br>Porcentagem: %{percent}<extra></extra>"
                                 )
-                                fig_qa.update_layout(
-                                    margin=dict(t=30, b=30, l=20, r=20),
-                                    height=400,
-                                    showlegend=True
-                                )
+                                fig_qa.update_layout(margin=dict(t=30, b=30, l=20, r=20), height=400, showlegend=True)
                                 st.plotly_chart(fig_qa, use_container_width=True)
                             else:
                                 st.info("Sem dados para exibir.")
-
-                # ==========================================
-                # SUB-ABA 3: CONTROLE DE PARCELAMENTOS
-                # ==========================================
-                with sub_aba3:
-                    st.markdown("### 💳 Acompanhamento de Parcelas e Extensões")
-                    st.write("Aqui você visualiza todas as linhas de despesas que possuem desdobramentos nas colunas de meses à direita.")
-                    
-                    if colunas_meses:
-                        colunas_parcelas_view = [col_desc, col_cat, col_quem] + colunas_meses
-                        colunas_existentes = [c for c in colunas_parcelas_view if c and c in df.columns]
-                        
-                        if colunas_existentes:
-                            st.dataframe(df[colunas_existentes], use_container_width=True)
                         else:
-                            st.dataframe(df, use_container_width=True)
+                            st.info("Sem dados de quem gastou.")
+                else:
+                    st.info("Ainda não há colunas de meses cadastradas na planilha.")
+
+            # ==========================================
+            # SUB-ABA 3: CONTROLE DE PARCELAMENTOS
+            # ==========================================
+            with sub_aba3:
+                st.markdown("### 💳 Acompanhamento de Parcelas e Extensões")
+                st.write("Aqui você visualiza todas as linhas de despesas que possuem desdobramentos nas colunas de meses à direita.")
+                
+                if colunas_meses:
+                    colunas_parcelas_view = [col_desc, col_cat, col_quem] + colunas_meses
+                    colunas_existentes = [c for c in colunas_parcelas_view if c and c in df.columns]
+                    
+                    if colunas_existentes:
+                        st.dataframe(df[colunas_existentes], use_container_width=True)
                     else:
-                        st.info("Nenhuma coluna de parcelamento/mês identificada.")
+                        st.dataframe(df, use_container_width=True)
+                else:
+                    st.info("Nenhuma coluna de parcelamento/mês identificada.")
 
             st.markdown("---")
             st.markdown("### 📋 Tabela Completa de Dados")
-            colunas_visiveis = [c for c in df.columns if c != "Valor_Num"]
-            st.dataframe(df[colunas_visiveis], use_container_width=True)
+            st.dataframe(df, use_container_width=True)
             
         else:
             st.info("ℹ️ Ainda não há dados cadastrados na planilha para gerar gráficos.")
