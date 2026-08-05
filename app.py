@@ -6,22 +6,22 @@ import json
 import time
 from datetime import datetime
 
-scopes = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive",
-]
-
-creds_dict = dict(st.secrets["gcp_service_account"])
-creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-client = gspread.authorize(creds)
-
-
 # --- CONFIGURAÇÃO ---
 st.set_page_config(page_title="Controle Financeiro Familiar", page_icon="💳", layout="centered")
 
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 SPREADSHEET_ID = "1eFK9CtarQoKqpZBBoptltnNS-cWU92pw2K7oEAXyI7k" 
 NOME_ABA = "Controle de Gastos"
+
+# Função auxiliar unificada para autenticação segura via Secrets
+def get_gspread_client():
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    creds_dict = dict(st.secrets["gcp_service_account"])
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    return gspread.authorize(creds)
 
 LISTA_CATEGORIAS_BASE = [
     "Lazer", "Presente", "Alimentação", "Transporte", "Moradia", 
@@ -125,9 +125,7 @@ valor_texto = st.text_input("Valor Total (R$)", placeholder="Ex: 50, 50,00 ou 18
 @st.cache_data(ttl=60)
 def carregar_categorias_existentes():
     try:
-        scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        creds = Credentials.from_service_account_file("credentials.json", scopes=scope)
-        client = gspread.authorize(creds)
+        client = get_gspread_client()
         sh = client.open_by_key(SPREADSHEET_ID)
         worksheet = sh.worksheet(NOME_ABA)
         
@@ -158,7 +156,7 @@ except ValueError:
 
 # --- SEÇÃO DE CATEGORIA ---
 st.markdown("### 📂 Categoria do Gasto")
-col_cat_sel, col_nova_txt, col_btn_add = st.columns([2, 2, 1])
+col_cat_sel, col_nova_txt, col_btn_add = st.columns([2, 2, 1], vertical_alignment="bottom")
 
 with col_cat_sel:
     categoria_selecionada = st.selectbox("Selecione a Categoria", lista_categorias_atualizada, index=indice_padrao, key="select_categoria", label_visibility="collapsed")
@@ -233,9 +231,7 @@ if st.session_state["processando_envio"]:
             
             status.write("🔑 Lendo credenciais e autenticando no Google...")
             try:
-                scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-                creds = Credentials.from_service_account_file("credentials.json", scopes=scope)
-                client = gspread.authorize(creds)
+                client = get_gspread_client()
                 status.write("✅ Autenticação realizada com sucesso.")
             except Exception as e:
                 status.update(label="❌ Erro na Autenticação!", state="error")
@@ -256,12 +252,10 @@ if st.session_state["processando_envio"]:
 
             status.write("🗓️ Mapeando e garantindo cabeçalhos exatos...")
             
-            # Força o cabeçalho base correto nas 6 primeiras colunas
             cabecalho_base = ["Data/Hora", "Quem Gastou", "Descrição", "Categoria", "Forma de Pagamento", "Valor"]
             
             cabecalho_atual = worksheet.row_values(1)
             
-            # Preserva os meses que já existem da coluna 7 em diante
             meses_existentes = []
             if len(cabecalho_atual) > 6:
                 meses_existentes = [m for m in cabecalho_atual[6:] if m.strip()]
@@ -286,7 +280,6 @@ if st.session_state["processando_envio"]:
                     "valor": valor_parcela
                 })
 
-            # Adiciona novos meses ao cabeçalho se necessário
             for p in parcelas_info:
                 mes_str = p["mes_ano"]
                 if mes_str not in cabecalho_final:
@@ -302,11 +295,8 @@ if st.session_state["processando_envio"]:
             letra_ultima_coluna = numero_para_coluna(len(cabecalho_final))
             worksheet.update(f"A1:{letra_ultima_coluna}1", [cabecalho_final])
 
-            # --- MONTAGEM DA LINHA DE DADOS RIGOROSAMENTE ALINHADA ---
-            # Cria uma lista de tamanho exato igual ao cabeçalho final preenchida com vazios
             linha_dados = [""] * len(cabecalho_final)
             
-            # Mapeamento fixo e direto por índice nas 6 primeiras colunas
             linha_dados[cabecalho_final.index("Data/Hora")] = f"'{data_hoje.strftime('%d/%m/%Y %H:%M:%S')}"
             linha_dados[cabecalho_final.index("Quem Gastou")] = quem_gastou
             linha_dados[cabecalho_final.index("Descrição")] = descricao_gasto if not parcelado else f"{descricao_gasto} ({num_parcelas}x)"
@@ -314,7 +304,6 @@ if st.session_state["processando_envio"]:
             linha_dados[cabecalho_final.index("Forma de Pagamento")] = detalhe_pagamento
             linha_dados[cabecalho_final.index("Valor")] = float(valor_gasto)
 
-            # Preenche os valores nas colunas correspondentes aos meses
             for p in parcelas_info:
                 mes_str = p["mes_ano"]
                 if mes_str in cabecalho_final:
