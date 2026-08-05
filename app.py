@@ -355,19 +355,13 @@ with aba2:
         if dados:
             df = pd.DataFrame(dados)
             
-            # --- DIAGNÓSTICO TEMPORÁRIO ---
-            st.write("Dados crus vindos da planilha:", df.head())
-            
-            # Converte valores para float de forma segura independente de ponto/vírgula
+            # Conversão corrigida para o formato numérico brasileiro (ex: "100,00" -> 100.0)
             if "Valor" in df.columns:
                 def converter_para_float(val):
                     try:
                         val_str = str(val).replace("R$", "").strip()
-                        # Se tiver formato brasileiro com ponto de milhar e vírgula decimal
-                        if "." in val_str and "," in val_str:
-                            val_str = val_str.replace(".", "").replace(",", ".")
-                        elif "," in val_str:
-                            val_str = val_str.replace(",", ".")
+                        # Remove pontos de milhar e troca vírgula decimal por ponto
+                        val_str = val_str.replace(".", "").replace(",", ".")
                         return float(val_str)
                     except:
                         return 0.0
