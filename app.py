@@ -31,7 +31,7 @@ LISTA_CATEGORIAS_BASE = [
     "Saúde", "Vestuário", "Manutenção", "Educação", "Infraestrutura", "Outros"
 ]
 
-LISTA_GASTADORES_BASE = ["Willian", "Aline", "Bernardo"]
+LISTA_GASTADORES_BASE = ["Willian", "Aline", "Bernardo", "Aline e Willian", "Aline e Bernardo", "Willian e Bernardo", "Aline-Will-Beh"]
 
 # Inicialização de estados
 if "gastadores_extras" not in st.session_state:
