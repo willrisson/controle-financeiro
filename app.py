@@ -10,7 +10,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 # --- CONFIGURAÇÃO ---
-st.set_page_config(page_title="Controle Financeiro Familiar", page_icon="💳", layout="centered")
+st.set_page_config(page_title="Controle Familiar de Despesas", page_icon="💳", layout="centered")
 
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 SPREADSHEET_ID = "1eFK9CtarQoKqpZBBoptltnNS-cWU92pw2K7oEAXyI7k"
@@ -31,7 +31,16 @@ LISTA_CATEGORIAS_BASE = [
     "Saúde", "Vestuário", "Manutenção", "Educação", "Infraestrutura", "Outros"
 ]
 
-LISTA_GASTADORES_BASE = ["Willian", "Aline", "Bernardo", "Aline e Willian", "Aline e Bernardo", "Willian e Bernardo", "Aline-Will-Beh"]
+# LISTA ATUALIZADA COM OS NOVOS GASTADORES E COMBINAÇÕES
+LISTA_GASTADORES_BASE = [
+    "Willian", 
+    "Aline", 
+    "Bernardo", 
+    "Willian+Aline", 
+    "Willian+Bernardo", 
+    "Aline+Bernardo", 
+    "Aline+Willian+Bernardo"
+]
 
 # Inicialização de estados
 if "gastadores_extras" not in st.session_state:
@@ -120,7 +129,8 @@ with tab_lancamento:
                 quem_gastou = outro_membro_input.strip()
     else:
         with col_q_txt:
-            st.markdown("<br><small style='color:#888'>Membro cadastrado selecionado</small>", unsafe_allow_html=True)
+            # Texto ajustado para alinhar perfeitamente ao lado da caixa de seleção
+            st.markdown("<div style='padding-top: 8px;'><small style='color:#888'>Membro cadastrado selecionado</small></div>", unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -168,7 +178,8 @@ with tab_lancamento:
         categoria_selecionada = st.selectbox("Selecione a Categoria", lista_categorias_atualizada, index=indice_padrao, key="select_categoria", label_visibility="collapsed")
 
     with col_nova_txt:
-        nova_cat_input = st.text_input("Criar categoria nova", placeholder="Ex: Manutenção Carro", key="input_nova_categoria", label_visibility="collapsed")
+        # Placeholder alterado para orientar claramente o usuário
+        nova_cat_input = st.text_input("Criar categoria nova", placeholder="Nova categoria...", key="input_nova_categoria", label_visibility="collapsed")
 
     with col_btn_add:
         if st.button("➕ Adicionar", use_container_width=True, key="btn_add_cat"):
@@ -340,7 +351,7 @@ with tab_lancamento:
                 st.rerun()
 
 # ============================================================
-# DASHBOARD (tudo novo a partir daqui)
+# DASHBOARD
 # ============================================================
 
 with tab_dashboard:
@@ -360,7 +371,6 @@ with tab_dashboard:
             cabecalho = valores[0]
             dados = valores[1:]
 
-            # Completa linhas curtas para evitar desalinhamento.
             dados_normalizados = [
                 linha + [""] * (len(cabecalho) - len(linha))
                 for linha in dados
@@ -373,13 +383,6 @@ with tab_dashboard:
             return pd.DataFrame()
 
     def converter_valor_planilha(valor):
-        """
-        Converte corretamente valores vindos do Google Sheets:
-        1234.56
-        1234,56
-        1.234,56
-        R$ 1.234,56
-        """
         if valor is None:
             return 0.0
 
@@ -398,7 +401,6 @@ with tab_dashboard:
         )
 
         if "," in texto:
-            # Formato brasileiro: 1.234,56
             texto = texto.replace(".", "").replace(",", ".")
 
         try:
@@ -440,10 +442,8 @@ with tab_dashboard:
             )
             st.stop()
 
-        # Colunas mensais são todas as colunas após as seis colunas fixas.
         colunas_mes = list(df_original.columns[6:])
 
-        # Base de compras: mantém o valor total assumido na compra.
         df_compras = df_original.copy()
         df_compras["Valor Compra"] = df_compras["Valor"].apply(
             converter_valor_planilha
@@ -463,7 +463,6 @@ with tab_dashboard:
             .replace("", "Outros")
         )
 
-        # Base longa de desembolsos mensais.
         registros_fluxo = []
 
         for _, linha in df_original.iterrows():
@@ -854,25 +853,8 @@ with tab_dashboard:
                         "Descrição",
                         "Categoria",
                         "Forma de Pagamento",
-                        "Valor Desembolsado",
+                        "Valor Desembolsado"
                     ]
                 ].copy()
-
-                detalhado["Valor"] = detalhado[
-                    "Valor Desembolsado"
-                ].apply(formatar_moeda)
-
-                st.dataframe(
-                    detalhado[
-                        [
-                            "Pessoa",
-                            "Descrição",
-                            "Categoria",
-                            "Forma de Pagamento",
-                            "Valor",
-                        ]
-                    ],
-                    use_container_width=True,
-                    hide_index=True,
-                )
-
+                detalhado["Valor Desembolsado"] = detalhado["Valor Desembolsado"].apply(formatar_moeda)
+                st.dataframe(detalhado, use_container_width=True, hide_index=True)
