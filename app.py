@@ -45,10 +45,15 @@ st.markdown(
         color: #ffffff;
     }
 
-    /* Destaca apenas o sinal de mais, sem deixar o vermelho excessivamente vivo. */
-    div.stButton > button[kind="secondary"] p::first-letter {
+    /* Insere o sinal de mais de forma independente para evitar que ele desapareça. */
+    .st-key-btn_add_local div.stButton > button::before,
+    .st-key-btn_add_cat div.stButton > button::before {
+        content: "+";
         color: #d85c5c;
         font-weight: 800;
+        font-size: 1.05rem;
+        margin-right: 0.34rem;
+        line-height: 1;
     }
     </style>
     """,
@@ -268,7 +273,7 @@ with tab_lancamento:
 
     with col_local_add:
         st.markdown("<div style='height:1.72rem;'></div>", unsafe_allow_html=True)
-        if st.button("+ Local", type="secondary", use_container_width=True, key="btn_add_local"):
+        if st.button("Local", type="secondary", use_container_width=True, key="btn_add_local"):
             local_limpo = novo_local_input.strip()
             if local_limpo:
                 if local_limpo not in lista_locais_atualizada:
@@ -355,7 +360,7 @@ with tab_lancamento:
 
     with col_btn_add:
         st.markdown("<div style='height:1.72rem;'></div>", unsafe_allow_html=True)
-        if st.button("+ Categoria", type="secondary", use_container_width=True, key="btn_add_cat"):
+        if st.button("Categoria", type="secondary", use_container_width=True, key="btn_add_cat"):
             cat_limpa = nova_cat_input.strip()
             if cat_limpa:
                 if cat_limpa not in lista_categorias_atualizada:
