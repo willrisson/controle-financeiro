@@ -13,12 +13,42 @@ import plotly.graph_objects as go
 st.set_page_config(page_title="Controle Financeiro Familiar", page_icon="💳", layout="centered")
 
 
-# Impede quebra de linha nos textos dos botões, preservando suas dimensões.
+# Ajustes visuais dos botões secundários de inclusão.
 st.markdown(
     """
     <style>
+    /* Mantém os textos em uma única linha. */
     div.stButton > button p {
         white-space: nowrap;
+    }
+
+    /* Botões + Local e + Categoria. */
+    div.stButton > button[kind="secondary"] {
+        background-color: #70757a;
+        border: 1px solid #70757a;
+        color: #ffffff;
+        min-height: 38px;
+        height: 38px;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+        font-weight: 600;
+    }
+
+    div.stButton > button[kind="secondary"]:hover {
+        background-color: #656a6f;
+        border-color: #656a6f;
+        color: #ffffff;
+    }
+
+    div.stButton > button[kind="secondary"]:focus:not(:active) {
+        border-color: #70757a;
+        color: #ffffff;
+    }
+
+    /* Destaca apenas o sinal de mais, sem deixar o vermelho excessivamente vivo. */
+    div.stButton > button[kind="secondary"] p::first-letter {
+        color: #d85c5c;
+        font-weight: 800;
     }
     </style>
     """,
@@ -220,7 +250,7 @@ with tab_lancamento:
 
     # --- SEÇÃO DE LOCAL DO GASTO ---
     st.markdown("### 🗺️ Local do Gasto")
-    col_local_sel, col_local_txt, col_local_add = st.columns([2, 2, 1])
+    col_local_sel, col_local_txt, col_local_add = st.columns([2, 2, 1.15])
 
     with col_local_sel:
         local_selecionado = st.selectbox(
@@ -237,8 +267,8 @@ with tab_lancamento:
         )
 
     with col_local_add:
-        st.markdown("<div style='height:1.55rem;'></div>", unsafe_allow_html=True)
-        if st.button("+ Local", use_container_width=True, key="btn_add_local"):
+        st.markdown("<div style='height:1.72rem;'></div>", unsafe_allow_html=True)
+        if st.button("+ Local", type="secondary", use_container_width=True, key="btn_add_local"):
             local_limpo = novo_local_input.strip()
             if local_limpo:
                 if local_limpo not in lista_locais_atualizada:
@@ -306,7 +336,7 @@ with tab_lancamento:
 
     # --- SEÇÃO DE CATEGORIA ---
     st.markdown("### 📂 Categoria do Gasto")
-    col_cat_sel, col_nova_txt, col_btn_add = st.columns([2, 2, 1])
+    col_cat_sel, col_nova_txt, col_btn_add = st.columns([2, 2, 1.15])
 
     with col_cat_sel:
         categoria_selecionada = st.selectbox(
@@ -324,8 +354,8 @@ with tab_lancamento:
         )
 
     with col_btn_add:
-        st.markdown("<div style='height:1.55rem;'></div>", unsafe_allow_html=True)
-        if st.button("+ Categoria", use_container_width=True, key="btn_add_cat"):
+        st.markdown("<div style='height:1.72rem;'></div>", unsafe_allow_html=True)
+        if st.button("+ Categoria", type="secondary", use_container_width=True, key="btn_add_cat"):
             cat_limpa = nova_cat_input.strip()
             if cat_limpa:
                 if cat_limpa not in lista_categorias_atualizada:
