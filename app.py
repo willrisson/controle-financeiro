@@ -12,6 +12,19 @@ import plotly.graph_objects as go
 # --- CONFIGURAÇÃO ---
 st.set_page_config(page_title="Controle Financeiro Familiar", page_icon="💳", layout="centered")
 
+
+# Impede quebra de linha nos textos dos botões, preservando suas dimensões.
+st.markdown(
+    """
+    <style>
+    div.stButton > button p {
+        white-space: nowrap;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 SPREADSHEET_ID = "1eFK9CtarQoKqpZBBoptltnNS-cWU92pw2K7oEAXyI7k"
 NOME_ABA = "Controle de Gastos"
@@ -210,12 +223,10 @@ with tab_lancamento:
     col_local_sel, col_local_txt, col_local_add = st.columns([2, 2, 1])
 
     with col_local_sel:
-        st.markdown("<div style='height:1.55rem;'></div>", unsafe_allow_html=True)
         local_selecionado = st.selectbox(
-            "Selecione o Local",
+            "Selecione Local",
             opcoes_local,
             key="select_local",
-            label_visibility="collapsed",
         )
 
     with col_local_txt:
@@ -227,7 +238,7 @@ with tab_lancamento:
 
     with col_local_add:
         st.markdown("<div style='height:1.55rem;'></div>", unsafe_allow_html=True)
-        if st.button("➕ Add Local", use_container_width=True, key="btn_add_local"):
+        if st.button("+ Local", use_container_width=True, key="btn_add_local"):
             local_limpo = novo_local_input.strip()
             if local_limpo:
                 if local_limpo not in lista_locais_atualizada:
@@ -298,8 +309,12 @@ with tab_lancamento:
     col_cat_sel, col_nova_txt, col_btn_add = st.columns([2, 2, 1])
 
     with col_cat_sel:
-        st.markdown("<div style='height:1.55rem;'></div>", unsafe_allow_html=True)
-        categoria_selecionada = st.selectbox("Selecione a Categoria", lista_categorias_atualizada, index=indice_padrao, key="select_categoria", label_visibility="collapsed")
+        categoria_selecionada = st.selectbox(
+            "Selecione Categoria",
+            lista_categorias_atualizada,
+            index=indice_padrao,
+            key="select_categoria",
+        )
 
     with col_nova_txt:
         nova_cat_input = st.text_input(
@@ -310,7 +325,7 @@ with tab_lancamento:
 
     with col_btn_add:
         st.markdown("<div style='height:1.55rem;'></div>", unsafe_allow_html=True)
-        if st.button("➕ Add Categoria", use_container_width=True, key="btn_add_cat"):
+        if st.button("+ Categoria", use_container_width=True, key="btn_add_cat"):
             cat_limpa = nova_cat_input.strip()
             if cat_limpa:
                 if cat_limpa not in lista_categorias_atualizada:
