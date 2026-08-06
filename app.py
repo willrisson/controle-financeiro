@@ -1048,23 +1048,42 @@ with tab_dashboard:
             if resumo_mes_local.empty:
                 st.info(f"Nenhum gasto por local em {mes_selecionado_str}.")
             else:
-                fig_local_mes = px.treemap(
-                    resumo_mes_local,
-                    path=[px.Constant("Total"), "Categoria", "Local"],
-                    values="Valor Desembolsado",
-                    custom_data=["Valor Desembolsado"],
+                resumo_pizza_local_mes = (
+                    resumo_mes_local.groupby("Local", as_index=False)["Valor Desembolsado"]
+                    .sum()
+                    .sort_values("Valor Desembolsado", ascending=False)
                 )
-                fig_local_mes.update_traces(
-                    hovertemplate=(
-                        "<b>%{label}</b><br>"
-                        "Valor: R$ %{customdata[0]:,.2f}"
-                        "<extra></extra>"
-                    )
+
+                fig_local_mes = go.Figure(
+                    data=[
+                        go.Pie(
+                            labels=resumo_pizza_local_mes["Local"].astype(str).tolist(),
+                            values=[float(v) for v in resumo_pizza_local_mes["Valor Desembolsado"].tolist()],
+                            hole=0.35,
+                            sort=False,
+                            direction="clockwise",
+                            textinfo="label+percent",
+                            customdata=[[float(v)] for v in resumo_pizza_local_mes["Valor Desembolsado"].tolist()],
+                            hovertemplate=(
+                                "<b>%{label}</b><br>"
+                                "Valor: R$ %{customdata[0]:,.2f}<br>"
+                                "Percentual: %{percent}"
+                                "<extra></extra>"
+                            ),
+                        )
+                    ]
                 )
+
                 fig_local_mes.update_layout(
                     title=f"Total do mês: {formatar_moeda(total_mes)}",
-                    margin=dict(t=60, b=20, l=20, r=20),
-                    height=520,
+                    showlegend=True,
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=-0.20,
+                    ),
+                    margin=dict(t=60, b=80, l=20, r=20),
+                    height=420,
                 )
                 st.plotly_chart(fig_local_mes, use_container_width=True)
 
@@ -1090,23 +1109,42 @@ with tab_dashboard:
             if resumo_ano_local.empty:
                 st.info(f"Nenhum gasto por local em {ano_selecionado}.")
             else:
-                fig_local_ano = px.treemap(
-                    resumo_ano_local,
-                    path=[px.Constant("Total"), "Categoria", "Local"],
-                    values="Valor Desembolsado",
-                    custom_data=["Valor Desembolsado"],
+                resumo_pizza_local_ano = (
+                    resumo_ano_local.groupby("Local", as_index=False)["Valor Desembolsado"]
+                    .sum()
+                    .sort_values("Valor Desembolsado", ascending=False)
                 )
-                fig_local_ano.update_traces(
-                    hovertemplate=(
-                        "<b>%{label}</b><br>"
-                        "Valor: R$ %{customdata[0]:,.2f}"
-                        "<extra></extra>"
-                    )
+
+                fig_local_ano = go.Figure(
+                    data=[
+                        go.Pie(
+                            labels=resumo_pizza_local_ano["Local"].astype(str).tolist(),
+                            values=[float(v) for v in resumo_pizza_local_ano["Valor Desembolsado"].tolist()],
+                            hole=0.35,
+                            sort=False,
+                            direction="clockwise",
+                            textinfo="label+percent",
+                            customdata=[[float(v)] for v in resumo_pizza_local_ano["Valor Desembolsado"].tolist()],
+                            hovertemplate=(
+                                "<b>%{label}</b><br>"
+                                "Valor: R$ %{customdata[0]:,.2f}<br>"
+                                "Percentual: %{percent}"
+                                "<extra></extra>"
+                            ),
+                        )
+                    ]
                 )
+
                 fig_local_ano.update_layout(
                     title=f"Total do ano: {formatar_moeda(total_ano)}",
-                    margin=dict(t=60, b=20, l=20, r=20),
-                    height=540,
+                    showlegend=True,
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=-0.20,
+                    ),
+                    margin=dict(t=60, b=80, l=20, r=20),
+                    height=440,
                 )
                 st.plotly_chart(fig_local_ano, use_container_width=True)
 
