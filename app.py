@@ -602,28 +602,40 @@ with tab_dashboard:
     def obter_label_fatia_selecionada(evento_plotly):
         """
         Retorna o rótulo da fatia selecionada em um gráfico Plotly.
-        Se não houver seleção ou a versão do Streamlit não entregar o evento,
-        retorna uma string vazia sem interromper o aplicativo.
+
+        O objeto retornado por st.plotly_chart não é um dicionário comum.
+        Por isso, não utilizamos .get(), que pode gerar StreamlitAPIException.
         """
+        if evento_plotly is None:
+            return ""
+
         try:
-            pontos = evento_plotly.selection.points
-        except (AttributeError, KeyError, TypeError):
+            selecao = evento_plotly.selection
+        except Exception:
+            return ""
+
+        try:
+            pontos = selecao.points
+        except Exception:
             try:
-                pontos = evento_plotly.get("selection", {}).get("points", [])
-            except (AttributeError, TypeError):
-                pontos = []
+                pontos = selecao["points"]
+            except Exception:
+                return ""
 
         if not pontos:
             return ""
 
-        primeiro_ponto = pontos[0]
+        try:
+            primeiro_ponto = pontos[0]
+        except Exception:
+            return ""
 
         try:
-            return str(primeiro_ponto.get("label", "")).strip()
-        except AttributeError:
+            return str(primeiro_ponto["label"]).strip()
+        except Exception:
             try:
-                return str(primeiro_ponto["label"]).strip()
-            except (KeyError, TypeError):
+                return str(primeiro_ponto.label).strip()
+            except Exception:
                 return ""
 
     df_original = carregar_dados_planilha()
