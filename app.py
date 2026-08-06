@@ -160,7 +160,7 @@ with tab_lancamento:
                 quem_gastou = outro_membro_input.strip()
     else:
         with col_q_txt:
-            st.markdown("<br><small style='color:#888'>Membro cadastrado selecionado</small>", unsafe_allow_html=True)
+            st.markdown("<div style='display: flex; align-items: center; height: 38px;'><small style='color:#888'>Membro cadastrado selecionado</small></div>", unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -201,6 +201,7 @@ with tab_lancamento:
     col_local_sel, col_local_txt, col_local_add = st.columns([2, 2, 1])
 
     with col_local_sel:
+        st.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #555;'>Selecione o Local</div>", unsafe_allow_html=True)
         local_selecionado = st.selectbox(
             "Selecione o Local",
             opcoes_local,
@@ -209,6 +210,7 @@ with tab_lancamento:
         )
 
     with col_local_txt:
+        st.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #555;'>Digite o novo local</div>", unsafe_allow_html=True)
         novo_local_input = st.text_input(
             "Criar local novo",
             placeholder="Ex: Mercado Livre",
@@ -217,7 +219,8 @@ with tab_lancamento:
         )
 
     with col_local_add:
-        if st.button("➕ Adicionar", use_container_width=True, key="btn_add_local"):
+        st.markdown("<div style='height: 22px;'></div>", unsafe_allow_html=True) # Espaçamento para alinhar com os inputs
+        if st.button("➕ Add Local", use_container_width=True, key="btn_add_local"):
             local_limpo = novo_local_input.strip()
             if local_limpo:
                 if local_limpo not in lista_locais_atualizada:
@@ -238,7 +241,9 @@ with tab_lancamento:
     )
 
     descricao_gasto = st.text_input("Descrição do Gasto", placeholder="Ex: Meta Quest 3s", key="input_descricao")
-    valor_texto = st.text_input("Valor Total (R$)", placeholder="Ex: 50, 50,00 ou 1800,00", key="input_valor")
+    
+    st.markdown('<p style="font-weight: 600; color: #d9534f; margin-bottom: -10px;">Valor Total (R$)</p>', unsafe_allow_html=True)
+    valor_texto = st.text_input("Valor Total (R$)", placeholder="Ex: 50, 50,00 ou 1800,00", key="input_valor", label_visibility="collapsed")
 
     # --- CONEXÃO PARA BUSCAR CATEGORIAS JÁ UTILIZADAS NA PLANILHA ---
     @st.cache_data(ttl=60)
@@ -278,13 +283,16 @@ with tab_lancamento:
     col_cat_sel, col_nova_txt, col_btn_add = st.columns([2, 2, 1])
 
     with col_cat_sel:
+        st.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #555;'>Selecione a Categoria</div>", unsafe_allow_html=True)
         categoria_selecionada = st.selectbox("Selecione a Categoria", lista_categorias_atualizada, index=indice_padrao, key="select_categoria", label_visibility="collapsed")
 
     with col_nova_txt:
+        st.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #555;'>Digite a nova categoria</div>", unsafe_allow_html=True)
         nova_cat_input = st.text_input("Criar categoria nova", placeholder="Ex: Manutenção Carro", key="input_nova_categoria", label_visibility="collapsed")
 
     with col_btn_add:
-        if st.button("➕ Adicionar", use_container_width=True, key="btn_add_cat"):
+        st.markdown("<div style='height: 22px;'></div>", unsafe_allow_html=True) # Espaçamento para alinhar com os inputs
+        if st.button("➕ Add Categoria", use_container_width=True, key="btn_add_cat"):
             cat_limpa = nova_cat_input.strip()
             if cat_limpa:
                 if cat_limpa not in lista_categorias_atualizada:
@@ -458,7 +466,7 @@ with tab_lancamento:
                 st.rerun()
 
 # ============================================================
-# DASHBOARD (tudo novo a partir daqui)
+# DASHBOARD
 # ============================================================
 
 with tab_dashboard:
@@ -479,7 +487,6 @@ with tab_dashboard:
             cabecalho = valores[0]
             dados = valores[1:]
 
-            # Completa linhas curtas para evitar desalinhamento.
             dados_normalizados = [
                 linha + [""] * (len(cabecalho) - len(linha))
                 for linha in dados
@@ -492,13 +499,6 @@ with tab_dashboard:
             return pd.DataFrame()
 
     def converter_valor_planilha(valor):
-        """
-        Converte corretamente valores vindos do Google Sheets:
-        1234.56
-        1234,56
-        1.234,56
-        R$ 1.234,56
-        """
         if valor is None:
             return 0.0
 
@@ -517,7 +517,6 @@ with tab_dashboard:
         )
 
         if "," in texto:
-            # Formato brasileiro: 1.234,56
             texto = texto.replace(".", "").replace(",", ".")
 
         try:
@@ -560,10 +559,8 @@ with tab_dashboard:
             )
             st.stop()
 
-        # Colunas mensais são todas as colunas após as sete colunas fixas.
         colunas_mes = [col for col in df_original.columns if col not in CABECALHO_BASE]
 
-        # Base de compras: mantém o valor total assumido na compra.
         df_compras = df_original.copy()
         df_compras["Valor Compra"] = df_compras["Valor"].apply(
             converter_valor_planilha
@@ -590,7 +587,6 @@ with tab_dashboard:
             .replace("", "Outros")
         )
 
-        # Base longa de desembolsos mensais.
         registros_fluxo = []
 
         for _, linha in df_original.iterrows():
@@ -666,7 +662,6 @@ with tab_dashboard:
             st.stop()
 
         data_hoje = datetime.now() - timedelta(hours=3)
-        mes_atual_str = obter_nome_mes_ano(data_hoje)
         ano_atual = data_hoje.year
 
         meses_ordem = {
@@ -773,10 +768,6 @@ with tab_dashboard:
             if nome == mes_nome_selecionado
         )
 
-        mes_selecionado_str = (
-            f"{mes_nome_selecionado}/{ano_selecionado}"
-        )
-
         df_filtrado = df_fluxo.copy()
 
         if pessoa_selecionada != "Todas":
@@ -835,316 +826,3 @@ with tab_dashboard:
             .sum()
             .sort_values("Valor Desembolsado", ascending=False)
         )
-
-
-
-        tab_visao_geral, tab_por_local = st.tabs([
-            "📊 Visão Geral",
-            "🗺️ Gastos por Local",
-        ])
-
-        with tab_visao_geral:
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-                st.metric("💰 Total Mês Atual", formatar_moeda(total_mes))
-
-            with col2:
-                st.metric("📅 Total Ano", formatar_moeda(total_ano))
-
-            with col3:
-                st.metric("📆 Mês de Referência", mes_selecionado_str)
-
-            st.markdown("---")
-            st.subheader(f"📊 Gastos por Categoria – {mes_selecionado_str}")
-
-            if resumo_mes_categoria.empty:
-                st.info(f"Nenhum gasto registrado em {mes_selecionado_str}.")
-            else:
-                fig1 = go.Figure(
-                    data=[
-                        go.Pie(
-                            labels=resumo_mes_categoria["Categoria"].astype(str).tolist(),
-                            values=[float(v) for v in resumo_mes_categoria["Valor Desembolsado"].tolist()],
-                            hole=0.35,
-                            sort=False,
-                            direction="clockwise",
-                            textinfo="label+percent",
-                            customdata=[[float(v)] for v in resumo_mes_categoria["Valor Desembolsado"].tolist()],
-                            hovertemplate=(
-                                "<b>%{label}</b><br>"
-                                "Valor: R$ %{customdata[0]:,.2f}<br>"
-                                "Percentual: %{percent}"
-                                "<extra></extra>"
-                            ),
-                        )
-                    ]
-                )
-
-                fig1.update_layout(
-                    title=f"Total do mês: {formatar_moeda(total_mes)}",
-                    showlegend=True,
-                    legend=dict(
-                        orientation="h",
-                        yanchor="bottom",
-                        y=-0.20,
-                    ),
-                    margin=dict(t=60, b=80, l=20, r=20),
-                    height=420,
-                )
-
-                st.plotly_chart(fig1, use_container_width=True)
-
-                tabela_categoria = resumo_mes_categoria.copy()
-                tabela_categoria["Percentual"] = (
-                    tabela_categoria["Valor Desembolsado"] / total_mes * 100
-                ).round(2)
-                tabela_categoria["Valor"] = tabela_categoria[
-                    "Valor Desembolsado"
-                ].apply(formatar_moeda)
-
-                st.dataframe(
-                    tabela_categoria[
-                        ["Categoria", "Valor", "Percentual"]
-                    ].rename(columns={"Percentual": "%"}),
-                    use_container_width=True,
-                    hide_index=True,
-                )
-
-            st.markdown("---")
-            st.subheader(f"👥 Gastos por Pessoa – {mes_selecionado_str}")
-
-            if resumo_mes_pessoa.empty:
-                st.info("Nenhum gasto por pessoa neste mês.")
-            else:
-                fig2 = go.Figure(
-                    data=[
-                        go.Pie(
-                            labels=resumo_mes_pessoa["Pessoa"].astype(str).tolist(),
-                            values=[float(v) for v in resumo_mes_pessoa["Valor Desembolsado"].tolist()],
-                            hole=0.35,
-                            sort=False,
-                            direction="clockwise",
-                            textinfo="label+percent",
-                            customdata=[[float(v)] for v in resumo_mes_pessoa["Valor Desembolsado"].tolist()],
-                            hovertemplate=(
-                                "<b>%{label}</b><br>"
-                                "Valor: R$ %{customdata[0]:,.2f}<br>"
-                                "Percentual: %{percent}"
-                                "<extra></extra>"
-                            ),
-                        )
-                    ]
-                )
-
-                fig2.update_layout(
-                    title=f"Total do mês: {formatar_moeda(total_mes)}",
-                    showlegend=True,
-                    legend=dict(
-                        orientation="h",
-                        yanchor="bottom",
-                        y=-0.20,
-                    ),
-                    margin=dict(t=60, b=80, l=20, r=20),
-                    height=420,
-                )
-
-                st.plotly_chart(fig2, use_container_width=True)
-
-                tabela_pessoa = resumo_mes_pessoa.copy()
-                tabela_pessoa["Percentual"] = (
-                    tabela_pessoa["Valor Desembolsado"] / total_mes * 100
-                ).round(2)
-                tabela_pessoa["Valor"] = tabela_pessoa[
-                    "Valor Desembolsado"
-                ].apply(formatar_moeda)
-
-                st.dataframe(
-                    tabela_pessoa[
-                        ["Pessoa", "Valor", "Percentual"]
-                    ].rename(columns={"Percentual": "%"}),
-                    use_container_width=True,
-                    hide_index=True,
-                )
-
-            st.markdown("---")
-            st.subheader(f"📅 Gastos Anuais por Categoria – {ano_selecionado}")
-
-            if resumo_ano_categoria.empty:
-                st.info(f"Nenhum gasto registrado em {ano_selecionado}.")
-            else:
-                fig3 = go.Figure(
-                    data=[
-                        go.Pie(
-                            labels=resumo_ano_categoria["Categoria"].astype(str).tolist(),
-                            values=[float(v) for v in resumo_ano_categoria["Valor Desembolsado"].tolist()],
-                            hole=0.35,
-                            sort=False,
-                            direction="clockwise",
-                            textinfo="label+percent",
-                            customdata=[[float(v)] for v in resumo_ano_categoria["Valor Desembolsado"].tolist()],
-                            hovertemplate=(
-                                "<b>%{label}</b><br>"
-                                "Valor: R$ %{customdata[0]:,.2f}<br>"
-                                "Percentual: %{percent}"
-                                "<extra></extra>"
-                            ),
-                        )
-                    ]
-                )
-
-                fig3.update_layout(
-                    title=f"Total do ano: {formatar_moeda(total_ano)}",
-                    showlegend=True,
-                    legend=dict(
-                        orientation="h",
-                        yanchor="bottom",
-                        y=-0.20,
-                    ),
-                    margin=dict(t=60, b=80, l=20, r=20),
-                    height=440,
-                )
-
-                st.plotly_chart(fig3, use_container_width=True)
-
-            with st.expander("📋 Ver lançamentos detalhados do mês"):
-                if df_mes.empty:
-                    st.write("Sem dados.")
-                else:
-                    detalhado = df_mes[
-                        [
-                            "Pessoa",
-                            "Local",
-                            "Descrição",
-                            "Categoria",
-                            "Forma de Pagamento",
-                            "Valor Desembolsado",
-                        ]
-                    ].copy()
-
-                    detalhado["Valor"] = detalhado[
-                        "Valor Desembolsado"
-                    ].apply(formatar_moeda)
-
-                    st.dataframe(
-                        detalhado[
-                            [
-                                "Pessoa",
-                                "Local",
-                                "Descrição",
-                                "Categoria",
-                                "Forma de Pagamento",
-                                "Valor",
-                            ]
-                        ],
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-
-        with tab_por_local:
-            st.subheader(f"🗺️ Categoria → Local – {mes_selecionado_str}")
-
-            if resumo_mes_local.empty:
-                st.info(f"Nenhum gasto por local em {mes_selecionado_str}.")
-            else:
-                resumo_pizza_local_mes = (
-                    resumo_mes_local.groupby("Local", as_index=False)["Valor Desembolsado"]
-                    .sum()
-                    .sort_values("Valor Desembolsado", ascending=False)
-                )
-
-                fig_local_mes = go.Figure(
-                    data=[
-                        go.Pie(
-                            labels=resumo_pizza_local_mes["Local"].astype(str).tolist(),
-                            values=[float(v) for v in resumo_pizza_local_mes["Valor Desembolsado"].tolist()],
-                            hole=0.35,
-                            sort=False,
-                            direction="clockwise",
-                            textinfo="label+percent",
-                            customdata=[[float(v)] for v in resumo_pizza_local_mes["Valor Desembolsado"].tolist()],
-                            hovertemplate=(
-                                "<b>%{label}</b><br>"
-                                "Valor: R$ %{customdata[0]:,.2f}<br>"
-                                "Percentual: %{percent}"
-                                "<extra></extra>"
-                            ),
-                        )
-                    ]
-                )
-
-                fig_local_mes.update_layout(
-                    title=f"Total do mês: {formatar_moeda(total_mes)}",
-                    showlegend=True,
-                    legend=dict(
-                        orientation="h",
-                        yanchor="bottom",
-                        y=-0.20,
-                    ),
-                    margin=dict(t=60, b=80, l=20, r=20),
-                    height=420,
-                )
-                st.plotly_chart(fig_local_mes, use_container_width=True)
-
-                tabela_local_mes = resumo_mes_local.copy()
-                tabela_local_mes["% do mês"] = (
-                    tabela_local_mes["Valor Desembolsado"] / total_mes * 100
-                ).round(2) if total_mes > 0 else 0
-                tabela_local_mes["Valor"] = tabela_local_mes[
-                    "Valor Desembolsado"
-                ].apply(formatar_moeda)
-
-                st.dataframe(
-                    tabela_local_mes[
-                        ["Categoria", "Local", "Valor", "% do mês"]
-                    ],
-                    use_container_width=True,
-                    hide_index=True,
-                )
-
-            st.markdown("---")
-            st.subheader(f"📅 Categoria → Local no ano – {ano_selecionado}")
-
-            if resumo_ano_local.empty:
-                st.info(f"Nenhum gasto por local em {ano_selecionado}.")
-            else:
-                resumo_pizza_local_ano = (
-                    resumo_ano_local.groupby("Local", as_index=False)["Valor Desembolsado"]
-                    .sum()
-                    .sort_values("Valor Desembolsado", ascending=False)
-                )
-
-                fig_local_ano = go.Figure(
-                    data=[
-                        go.Pie(
-                            labels=resumo_pizza_local_ano["Local"].astype(str).tolist(),
-                            values=[float(v) for v in resumo_pizza_local_ano["Valor Desembolsado"].tolist()],
-                            hole=0.35,
-                            sort=False,
-                            direction="clockwise",
-                            textinfo="label+percent",
-                            customdata=[[float(v)] for v in resumo_pizza_local_ano["Valor Desembolsado"].tolist()],
-                            hovertemplate=(
-                                "<b>%{label}</b><br>"
-                                "Valor: R$ %{customdata[0]:,.2f}<br>"
-                                "Percentual: %{percent}"
-                                "<extra></extra>"
-                            ),
-                        )
-                    ]
-                )
-
-                fig_local_ano.update_layout(
-                    title=f"Total do ano: {formatar_moeda(total_ano)}",
-                    showlegend=True,
-                    legend=dict(
-                        orientation="h",
-                        yanchor="bottom",
-                        y=-0.20,
-                    ),
-                    margin=dict(t=60, b=80, l=20, r=20),
-                    height=440,
-                )
-                st.plotly_chart(fig_local_ano, use_container_width=True)
-
