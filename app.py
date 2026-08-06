@@ -44,17 +44,6 @@ st.markdown(
         border-color: #70757a;
         color: #ffffff;
     }
-
-    /* Insere o sinal de mais de forma independente para evitar que ele desapareça. */
-    .st-key-btn_add_local div.stButton > button::before,
-    .st-key-btn_add_cat div.stButton > button::before {
-        content: "+";
-        color: #d85c5c;
-        font-weight: 800;
-        font-size: 1.05rem;
-        margin-right: 0.34rem;
-        line-height: 1;
-    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -273,7 +262,7 @@ with tab_lancamento:
 
     with col_local_add:
         st.markdown("<div style='height:1.72rem;'></div>", unsafe_allow_html=True)
-        if st.button("Local", type="secondary", use_container_width=True, key="btn_add_local"):
+        if st.button("➕ Local", type="secondary", use_container_width=True, key="btn_add_local"):
             local_limpo = novo_local_input.strip()
             if local_limpo:
                 if local_limpo not in lista_locais_atualizada:
@@ -360,7 +349,7 @@ with tab_lancamento:
 
     with col_btn_add:
         st.markdown("<div style='height:1.72rem;'></div>", unsafe_allow_html=True)
-        if st.button("Categoria", type="secondary", use_container_width=True, key="btn_add_cat"):
+        if st.button("➕ Categoria", type="secondary", use_container_width=True, key="btn_add_cat"):
             cat_limpa = nova_cat_input.strip()
             if cat_limpa:
                 if cat_limpa not in lista_categorias_atualizada:
@@ -1171,13 +1160,14 @@ with tab_dashboard:
                     "Valor Desembolsado"
                 ].apply(formatar_moeda)
 
-                st.dataframe(
-                    tabela_local_mes[
-                        ["Categoria", "Local", "Valor", "% do mês"]
-                    ],
-                    use_container_width=True,
-                    hide_index=True,
-                )
+                with st.expander("📋 Ver detalhes por categoria e local do mês", expanded=False):
+                    st.dataframe(
+                        tabela_local_mes[
+                            ["Categoria", "Local", "Valor", "% do mês"]
+                        ],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
             st.markdown("---")
             st.subheader(f"📅 Categoria → Local no ano – {ano_selecionado}")
@@ -1223,4 +1213,21 @@ with tab_dashboard:
                     height=440,
                 )
                 st.plotly_chart(fig_local_ano, use_container_width=True)
+
+                tabela_local_ano = resumo_ano_local.copy()
+                tabela_local_ano["% do ano"] = (
+                    tabela_local_ano["Valor Desembolsado"] / total_ano * 100
+                ).round(2) if total_ano > 0 else 0
+                tabela_local_ano["Valor"] = tabela_local_ano[
+                    "Valor Desembolsado"
+                ].apply(formatar_moeda)
+
+                with st.expander("📋 Ver detalhes por categoria e local do ano", expanded=False):
+                    st.dataframe(
+                        tabela_local_ano[
+                            ["Categoria", "Local", "Valor", "% do ano"]
+                        ],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
