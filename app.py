@@ -10,7 +10,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 # --- CONFIGURAÇÃO ---
-st.set_page_config(page_title="Controle Familiar de Despesas", page_icon="💳", layout="centered")
+st.set_page_config(page_title="Controle Financeiro Familiar", page_icon="💳", layout="centered")
 
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 SPREADSHEET_ID = "1eFK9CtarQoKqpZBBoptltnNS-cWU92pw2K7oEAXyI7k"
@@ -31,16 +31,7 @@ LISTA_CATEGORIAS_BASE = [
     "Saúde", "Vestuário", "Manutenção", "Educação", "Infraestrutura", "Outros"
 ]
 
-# LISTA ATUALIZADA COM OS NOVOS GASTADORES E COMBINAÇÕES
-LISTA_GASTADORES_BASE = [
-    "Willian", 
-    "Aline", 
-    "Bernardo", 
-    "Willian+Aline", 
-    "Willian+Bernardo", 
-    "Aline+Bernardo", 
-    "Aline+Willian+Bernardo"
-]
+LISTA_GASTADORES_BASE = ["Willian", "Aline", "Bernardo"]
 
 # Inicialização de estados
 if "gastadores_extras" not in st.session_state:
@@ -58,7 +49,6 @@ if "processando_envio" not in st.session_state:
 # Limpeza de campos se acionada
 if st.session_state["form_limpo"]:
     st.session_state["input_descricao"] = ""
-    st.session_state["input_local"] = ""
     st.session_state["input_valor"] = ""
     st.session_state["check_parcelado"] = False
     st.session_state["input_num_parcelas"] = ""
@@ -130,16 +120,11 @@ with tab_lancamento:
                 quem_gastou = outro_membro_input.strip()
     else:
         with col_q_txt:
-            st.markdown("<div style='padding-top: 8px;'><small style='color:#888'>Membro cadastrado selecionado</small></div>", unsafe_allow_html=True)
+            st.markdown("<br><small style='color:#888'>Membro cadastrado selecionado</small>", unsafe_allow_html=True)
 
     st.markdown("---")
 
-    # --- CAMPOS DE DESCRIÇÃO E LOCAL ---
     descricao_gasto = st.text_input("Descrição do Gasto", placeholder="Ex: Meta Quest 3s", key="input_descricao")
-    
-    st.markdown("<small style='color:#888'>Local do Gasto</small>", unsafe_allow_html=True)
-    local_gasto = st.text_input("Local do Gasto", placeholder="Ex: McDonald's, Supermercado...", key="input_local", label_visibility="collapsed")
-    
     valor_texto = st.text_input("Valor Total (R$)", placeholder="Ex: 50, 50,00 ou 1800,00", key="input_valor")
 
     # --- CONEXÃO PARA BUSCAR CATEGORIAS JÁ UTILIZADAS NA PLANILHA ---
@@ -183,7 +168,7 @@ with tab_lancamento:
         categoria_selecionada = st.selectbox("Selecione a Categoria", lista_categorias_atualizada, index=indice_padrao, key="select_categoria", label_visibility="collapsed")
 
     with col_nova_txt:
-        nova_cat_input = st.text_input("Criar categoria nova", placeholder="Nova categoria...", key="input_nova_categoria", label_visibility="collapsed")
+        nova_cat_input = st.text_input("Criar categoria nova", placeholder="Ex: Manutenção Carro", key="input_nova_categoria", label_visibility="collapsed")
 
     with col_btn_add:
         if st.button("➕ Adicionar", use_container_width=True, key="btn_add_cat"):
@@ -213,6 +198,7 @@ with tab_lancamento:
     with col_parc_num:
         num_parcelas_str = st.text_input("Número de Parcelas", disabled=not parcelado, placeholder="Ex: 10", key="input_num_parcelas")
 
+    # Botão principal com bloqueio ativo por session_state
     btn_enviar = st.button("🚀 Registrar Gasto", type="primary", use_container_width=True, disabled=st.session_state["processando_envio"])
 
     if btn_enviar:
@@ -224,6 +210,7 @@ with tab_lancamento:
             st.session_state["processando_envio"] = True
             st.rerun()
 
+    # Executa o salvamento apenas se a flag estiver ativa
     if st.session_state["processando_envio"]:
         try:
             v_limpo = valor_texto.strip().replace("R$", "").replace(" ", "")
@@ -273,15 +260,13 @@ with tab_lancamento:
 
                 status.write("🗓️ Mapeando e garantindo cabeçalhos exatos...")
 
-                # Cabeçalho base atualizado incluindo o "Local" na posição correta
-                cabecalho_base = ["Data/Hora", "Quem Gastou", "Descrição", "Local", "Categoria", "Forma de Pagamento", "Valor"]
+                cabecalho_base = ["Data/Hora", "Quem Gastou", "Descrição", "Categoria", "Forma de Pagamento", "Valor"]
 
                 cabecalho_atual = worksheet.row_values(1)
 
                 meses_existentes = []
-                # Como adicionamos uma coluna, o deslocamento das colunas mensais começa após o índice 6
-                if len(cabecalho_atual) > 7:
-                    meses_existentes = [m for m in cabecalho_atual[7:] if m.strip()]
+                if len(cabecalho_atual) > 6:
+                    meses_existentes = [m for m in cabecalho_atual[6:] if m.strip()]
 
                 cabecalho_final = cabecalho_base + [m for m in meses_existentes if m not in cabecalho_base]
 
@@ -323,7 +308,6 @@ with tab_lancamento:
                 linha_dados[cabecalho_final.index("Data/Hora")] = f"'{data_hoje.strftime('%d/%m/%Y %H:%M:%S')}"
                 linha_dados[cabecalho_final.index("Quem Gastou")] = quem_gastou
                 linha_dados[cabecalho_final.index("Descrição")] = descricao_gasto if not parcelado else f"{descricao_gasto} ({num_parcelas}x)"
-                linha_dados[cabecalho_final.index("Local")] = local_gasto.strip()
                 linha_dados[cabecalho_final.index("Categoria")] = categoria_final
                 linha_dados[cabecalho_final.index("Forma de Pagamento")] = detalhe_pagamento
                 linha_dados[cabecalho_final.index("Valor")] = float(valor_gasto)
@@ -346,9 +330,9 @@ with tab_lancamento:
 
                 status.update(label="🎉 Gasto registrado com sucesso!", state="complete", expanded=False)
                 if parcelado:
-                    st.success(f"✅ Gasto de R$ {valor_gasto:.2f} por **{quem_gastou}** em **{local_gasto or 'Local não informado'}** parcelado em {num_parcelas}x!")
+                    st.success(f"✅ Gasto de R$ {valor_gasto:.2f} por **{quem_gastou}** na categoria **{categoria_final}** parcelado em {num_parcelas}x!")
                 else:
-                    st.success(f"✅ Gasto de R$ {valor_gaturado if 'valor_gaturado' in locals() else valor_gasto:.2f} por **{quem_gastou}** registrado!")
+                    st.success(f"✅ Gasto de R$ {valor_gasto:.2f} por **{quem_gastou}** registrado na categoria **{categoria_final}**!")
 
                 time.sleep(2)
                 st.session_state["form_limpo"] = True
@@ -356,7 +340,7 @@ with tab_lancamento:
                 st.rerun()
 
 # ============================================================
-# DASHBOARD
+# DASHBOARD (tudo novo a partir daqui)
 # ============================================================
 
 with tab_dashboard:
@@ -376,6 +360,7 @@ with tab_dashboard:
             cabecalho = valores[0]
             dados = valores[1:]
 
+            # Completa linhas curtas para evitar desalinhamento.
             dados_normalizados = [
                 linha + [""] * (len(cabecalho) - len(linha))
                 for linha in dados
@@ -388,16 +373,34 @@ with tab_dashboard:
             return pd.DataFrame()
 
     def converter_valor_planilha(valor):
+        """
+        Converte corretamente valores vindos do Google Sheets:
+        1234.56
+        1234,56
+        1.234,56
+        R$ 1.234,56
+        """
         if valor is None:
             return 0.0
+
         if isinstance(valor, (int, float)):
             return float(valor)
+
         texto = str(valor).strip()
+
         if not texto:
             return 0.0
-        texto = texto.replace("R$", "").replace("\xa0", "").replace(" ", "")
+
+        texto = (
+            texto.replace("R$", "")
+            .replace("\xa0", "")
+            .replace(" ", "")
+        )
+
         if "," in texto:
+            # Formato brasileiro: 1.234,56
             texto = texto.replace(".", "").replace(",", ".")
+
         try:
             return float(texto)
         except (TypeError, ValueError):
@@ -420,7 +423,6 @@ with tab_dashboard:
             "Data/Hora",
             "Quem Gastou",
             "Descrição",
-            "Local",
             "Categoria",
             "Forma de Pagamento",
             "Valor",
@@ -438,17 +440,40 @@ with tab_dashboard:
             )
             st.stop()
 
-        # Como temos uma coluna a mais (Local), os meses começam a partir do índice 7
-        colunas_mes = list(df_original.columns[7:])
+        # Colunas mensais são todas as colunas após as seis colunas fixas.
+        colunas_mes = list(df_original.columns[6:])
 
+        # Base de compras: mantém o valor total assumido na compra.
+        df_compras = df_original.copy()
+        df_compras["Valor Compra"] = df_compras["Valor"].apply(
+            converter_valor_planilha
+        )
+        df_compras["Pessoa"] = (
+            df_compras["Quem Gastou"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            .replace("", "Outros")
+        )
+        df_compras["Categoria Tratada"] = (
+            df_compras["Categoria"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            .replace("", "Outros")
+        )
+
+        # Base longa de desembolsos mensais.
         registros_fluxo = []
 
         for _, linha in df_original.iterrows():
             pessoa = str(linha.get("Quem Gastou", "")).strip() or "Outros"
             categoria = str(linha.get("Categoria", "")).strip() or "Outros"
-            local = str(linha.get("Local", "")).strip() or "Não informado"
             descricao = str(linha.get("Descrição", "")).strip() or "Sem descrição"
-            forma_pagamento = str(linha.get("Forma de Pagamento", "")).strip() or "Não informado"
+            forma_pagamento = (
+                str(linha.get("Forma de Pagamento", "")).strip()
+                or "Não informado"
+            )
 
             for nome_mes in colunas_mes:
                 valor_mes = converter_valor_planilha(linha.get(nome_mes, ""))
@@ -456,45 +481,78 @@ with tab_dashboard:
                 if valor_mes <= 0:
                     continue
 
-                meses_pt_numero = {
-                    "Janeiro": 1, "Fevereiro": 2, "Março": 3, "Abril": 4,
-                    "Maio": 5, "Junho": 6, "Julho": 7, "Agosto": 8,
-                    "Setembro": 9, "Outubro": 10, "Novembro": 11, "Dezembro": 12,
-                }
-
                 try:
                     mes_texto, ano_texto = nome_mes.split("/")
-                    numero_mes = meses_pt_numero[mes_texto]
-                    data_competencia = datetime(int(ano_texto), numero_mes, 1)
+                    data_competencia = datetime.strptime(
+                        f"01/{mes_texto}/{ano_texto}",
+                        "%d/%B/%Y",
+                    )
                 except Exception:
-                    continue
+                    meses_pt_numero = {
+                        "Janeiro": 1,
+                        "Fevereiro": 2,
+                        "Março": 3,
+                        "Abril": 4,
+                        "Maio": 5,
+                        "Junho": 6,
+                        "Julho": 7,
+                        "Agosto": 8,
+                        "Setembro": 9,
+                        "Outubro": 10,
+                        "Novembro": 11,
+                        "Dezembro": 12,
+                    }
 
-                registros_fluxo.append({
-                    "Competência": pd.Timestamp(data_competencia),
-                    "Mês/Ano": nome_mes,
-                    "Ano": data_competencia.year,
-                    "Mês Número": data_competencia.month,
-                    "Pessoa": pessoa,
-                    "Categoria": categoria,
-                    "Local": local,
-                    "Descrição": descricao,
-                    "Forma de Pagamento": forma_pagamento,
-                    "Valor Desembolsado": valor_mes,
-                })
+                    try:
+                        mes_texto, ano_texto = nome_mes.split("/")
+                        numero_mes = meses_pt_numero[mes_texto]
+                        data_competencia = datetime(
+                            int(ano_texto),
+                            numero_mes,
+                            1,
+                        )
+                    except Exception:
+                        continue
+
+                registros_fluxo.append(
+                    {
+                        "Competência": pd.Timestamp(data_competencia),
+                        "Mês/Ano": nome_mes,
+                        "Ano": data_competencia.year,
+                        "Mês Número": data_competencia.month,
+                        "Pessoa": pessoa,
+                        "Categoria": categoria,
+                        "Descrição": descricao,
+                        "Forma de Pagamento": forma_pagamento,
+                        "Valor Desembolsado": valor_mes,
+                    }
+                )
 
         df_fluxo = pd.DataFrame(registros_fluxo)
 
         if df_fluxo.empty:
-            st.warning("Não foram encontrados valores válidos nas colunas mensais.")
+            st.warning(
+                "Não foram encontrados valores válidos nas colunas mensais."
+            )
             st.stop()
 
         data_hoje = datetime.now() - timedelta(hours=3)
+        mes_atual_str = obter_nome_mes_ano(data_hoje)
         ano_atual = data_hoje.year
 
         meses_ordem = {
-            1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
-            5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
-            9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro",
+            1: "Janeiro",
+            2: "Fevereiro",
+            3: "Março",
+            4: "Abril",
+            5: "Maio",
+            6: "Junho",
+            7: "Julho",
+            8: "Agosto",
+            9: "Setembro",
+            10: "Outubro",
+            11: "Novembro",
+            12: "Dezembro",
         }
 
         anos_disponiveis = sorted(
@@ -509,24 +567,40 @@ with tab_dashboard:
             ano_selecionado = st.selectbox(
                 "Ano",
                 anos_disponiveis,
-                index=anos_disponiveis.index(ano_atual) if ano_atual in anos_disponiveis else 0,
+                index=anos_disponiveis.index(ano_atual)
+                if ano_atual in anos_disponiveis
+                else 0,
                 key="dashboard_ano",
             )
 
             meses_disponiveis_num = sorted(
-                df_fluxo.loc[df_fluxo["Ano"] == ano_selecionado, "Mês Número"]
-                .dropna().astype(int).unique().tolist()
+                df_fluxo.loc[
+                    df_fluxo["Ano"] == ano_selecionado,
+                    "Mês Número",
+                ]
+                .dropna()
+                .astype(int)
+                .unique()
+                .tolist()
             )
 
             mes_atual_num = data_hoje.month
+
             if mes_atual_num not in meses_disponiveis_num:
                 meses_disponiveis_num.append(mes_atual_num)
-                meses_disponiveis_num = sorted(set(meses_disponiveis_num))
+                meses_disponiveis_num = sorted(
+                    set(meses_disponiveis_num)
+                )
 
-            nomes_meses_disponiveis = [meses_ordem[numero] for numero in meses_disponiveis_num]
+            nomes_meses_disponiveis = [
+                meses_ordem[numero]
+                for numero in meses_disponiveis_num
+            ]
+
             indice_mes_padrao = (
                 meses_disponiveis_num.index(mes_atual_num)
-                if mes_atual_num in meses_disponiveis_num else 0
+                if mes_atual_num in meses_disponiveis_num
+                else 0
             )
 
             mes_nome_selecionado = st.selectbox(
@@ -536,8 +610,12 @@ with tab_dashboard:
                 key="dashboard_mes",
             )
 
-            pessoas_disponiveis = sorted(df_fluxo["Pessoa"].dropna().astype(str).unique().tolist())
-            categorias_disponiveis = sorted(df_fluxo["Categoria"].dropna().astype(str).unique().tolist())
+            pessoas_disponiveis = sorted(
+                df_fluxo["Pessoa"].dropna().astype(str).unique().tolist()
+            )
+            categorias_disponiveis = sorted(
+                df_fluxo["Categoria"].dropna().astype(str).unique().tolist()
+            )
 
             pessoa_selecionada = st.selectbox(
                 "Pessoa",
@@ -552,43 +630,65 @@ with tab_dashboard:
             )
 
         numero_mes_selecionado = next(
-            numero for numero, nome in meses_ordem.items() if nome == mes_nome_selecionado
+            numero
+            for numero, nome in meses_ordem.items()
+            if nome == mes_nome_selecionado
         )
-        mes_selecionado_str = f"{mes_nome_selecionado}/{ano_selecionado}"
+
+        mes_selecionado_str = (
+            f"{mes_nome_selecionado}/{ano_selecionado}"
+        )
 
         df_filtrado = df_fluxo.copy()
+
         if pessoa_selecionada != "Todas":
-            df_filtrado = df_filtrado[df_filtrado["Pessoa"] == pessoa_selecionada]
+            df_filtrado = df_filtrado[
+                df_filtrado["Pessoa"] == pessoa_selecionada
+            ]
+
         if categoria_selecionada != "Todas":
-            df_filtrado = df_filtrado[df_filtrado["Categoria"] == categoria_selecionada]
+            df_filtrado = df_filtrado[
+                df_filtrado["Categoria"] == categoria_selecionada
+            ]
 
         df_mes = df_filtrado[
-            (df_filtrado["Ano"] == ano_selecionado) & (df_filtrado["Mês Número"] == numero_mes_selecionado)
+            (df_filtrado["Ano"] == ano_selecionado)
+            & (df_filtrado["Mês Número"] == numero_mes_selecionado)
         ].copy()
 
-        df_ano = df_filtrado[df_filtrado["Ano"] == ano_selecionado].copy()
+        df_ano = df_filtrado[
+            df_filtrado["Ano"] == ano_selecionado
+        ].copy()
 
         total_mes = df_mes["Valor Desembolsado"].sum()
         total_ano = df_ano["Valor Desembolsado"].sum()
 
         resumo_mes_categoria = (
             df_mes.groupby("Categoria", as_index=False)["Valor Desembolsado"]
-            .sum().sort_values("Valor Desembolsado", ascending=False)
+            .sum()
+            .sort_values("Valor Desembolsado", ascending=False)
         )
+
         resumo_mes_pessoa = (
             df_mes.groupby("Pessoa", as_index=False)["Valor Desembolsado"]
-            .sum().sort_values("Valor Desembolsado", ascending=False)
+            .sum()
+            .sort_values("Valor Desembolsado", ascending=False)
         )
+
         resumo_ano_categoria = (
             df_ano.groupby("Categoria", as_index=False)["Valor Desembolsado"]
-            .sum().sort_values("Valor Desembolsado", ascending=False)
+            .sum()
+            .sort_values("Valor Desembolsado", ascending=False)
         )
 
         col1, col2, col3 = st.columns(3)
+
         with col1:
             st.metric("💰 Total Mês Atual", formatar_moeda(total_mes))
+
         with col2:
             st.metric("📅 Total Ano", formatar_moeda(total_ano))
+
         with col3:
             st.metric("📆 Mês de Referência", mes_selecionado_str)
 
@@ -617,21 +717,35 @@ with tab_dashboard:
                     )
                 ]
             )
+
             fig1.update_layout(
                 title=f"Total do mês: {formatar_moeda(total_mes)}",
                 showlegend=True,
-                legend=dict(orientation="h", yanchor="bottom", y=-0.20),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=-0.20,
+                ),
                 margin=dict(t=60, b=80, l=20, r=20),
                 height=420,
             )
+
             st.plotly_chart(fig1, use_container_width=True)
 
             tabela_categoria = resumo_mes_categoria.copy()
-            tabela_categoria["Percentual"] = (tabela_categoria["Valor Desembolsado"] / total_mes * 100).round(2)
-            tabela_categoria["Valor"] = tabela_categoria["Valor Desembolsado"].apply(formatar_moeda)
+            tabela_categoria["Percentual"] = (
+                tabela_categoria["Valor Desembolsado"] / total_mes * 100
+            ).round(2)
+            tabela_categoria["Valor"] = tabela_categoria[
+                "Valor Desembolsado"
+            ].apply(formatar_moeda)
+
             st.dataframe(
-                tabela_categoria[["Categoria", "Valor", "Percentual"]].rename(columns={"Percentual": "%"}),
-                use_container_width=True, hide_index=True,
+                tabela_categoria[
+                    ["Categoria", "Valor", "Percentual"]
+                ].rename(columns={"Percentual": "%"}),
+                use_container_width=True,
+                hide_index=True,
             )
 
         st.markdown("---")
@@ -659,21 +773,35 @@ with tab_dashboard:
                     )
                 ]
             )
+
             fig2.update_layout(
                 title=f"Total do mês: {formatar_moeda(total_mes)}",
                 showlegend=True,
-                legend=dict(orientation="h", yanchor="bottom", y=-0.20),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=-0.20,
+                ),
                 margin=dict(t=60, b=80, l=20, r=20),
                 height=420,
             )
+
             st.plotly_chart(fig2, use_container_width=True)
 
             tabela_pessoa = resumo_mes_pessoa.copy()
-            tabela_pessoa["Percentual"] = (tabela_pessoa["Valor Desembolsado"] / total_mes * 100).round(2)
-            tabela_pessoa["Valor"] = tabela_pessoa["Valor Desembolsado"].apply(formatar_moeda)
+            tabela_pessoa["Percentual"] = (
+                tabela_pessoa["Valor Desembolsado"] / total_mes * 100
+            ).round(2)
+            tabela_pessoa["Valor"] = tabela_pessoa[
+                "Valor Desembolsado"
+            ].apply(formatar_moeda)
+
             st.dataframe(
-                tabela_pessoa[["Pessoa", "Valor", "Percentual"]].rename(columns={"Percentual": "%"}),
-                use_container_width=True, hide_index=True,
+                tabela_pessoa[
+                    ["Pessoa", "Valor", "Percentual"]
+                ].rename(columns={"Percentual": "%"}),
+                use_container_width=True,
+                hide_index=True,
             )
 
         st.markdown("---")
@@ -701,17 +829,50 @@ with tab_dashboard:
                     )
                 ]
             )
+
             fig3.update_layout(
                 title=f"Total do ano: {formatar_moeda(total_ano)}",
                 showlegend=True,
-                legend=dict(orientation="h", yanchor="bottom", y=-0.20),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=-0.20,
+                ),
                 margin=dict(t=60, b=80, l=20, r=20),
                 height=440,
             )
+
             st.plotly_chart(fig3, use_container_width=True)
 
         with st.expander("📋 Ver lançamentos detalhados do mês"):
             if df_mes.empty:
                 st.write("Sem dados.")
             else:
-                st.dataframe(df_mes[["Competência", "Quem Gastou", "Descrição", "Local", "Categoria", "Forma de Pagamento", "Valor Desembolsado"]], use_container_width=True, hide_index=True)
+                detalhado = df_mes[
+                    [
+                        "Pessoa",
+                        "Descrição",
+                        "Categoria",
+                        "Forma de Pagamento",
+                        "Valor Desembolsado",
+                    ]
+                ].copy()
+
+                detalhado["Valor"] = detalhado[
+                    "Valor Desembolsado"
+                ].apply(formatar_moeda)
+
+                st.dataframe(
+                    detalhado[
+                        [
+                            "Pessoa",
+                            "Descrição",
+                            "Categoria",
+                            "Forma de Pagamento",
+                            "Valor",
+                        ]
+                    ],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
