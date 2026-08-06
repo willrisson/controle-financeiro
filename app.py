@@ -598,6 +598,34 @@ with tab_dashboard:
             .replace("X", ".")
         )
 
+
+    def obter_label_fatia_selecionada(evento_plotly):
+        """
+        Retorna o rótulo da fatia selecionada em um gráfico Plotly.
+        Se não houver seleção ou a versão do Streamlit não entregar o evento,
+        retorna uma string vazia sem interromper o aplicativo.
+        """
+        try:
+            pontos = evento_plotly.selection.points
+        except (AttributeError, KeyError, TypeError):
+            try:
+                pontos = evento_plotly.get("selection", {}).get("points", [])
+            except (AttributeError, TypeError):
+                pontos = []
+
+        if not pontos:
+            return ""
+
+        primeiro_ponto = pontos[0]
+
+        try:
+            return str(primeiro_ponto.get("label", "")).strip()
+        except AttributeError:
+            try:
+                return str(primeiro_ponto["label"]).strip()
+            except (KeyError, TypeError):
+                return ""
+
     df_original = carregar_dados_planilha()
 
     if df_original.empty:
@@ -930,12 +958,18 @@ with tab_dashboard:
                     data=[
                         go.Pie(
                             labels=resumo_mes_categoria["Categoria"].astype(str).tolist(),
-                            values=[float(v) for v in resumo_mes_categoria["Valor Desembolsado"].tolist()],
+                            values=[
+                                float(v)
+                                for v in resumo_mes_categoria["Valor Desembolsado"].tolist()
+                            ],
                             hole=0.35,
                             sort=False,
                             direction="clockwise",
                             textinfo="label+percent",
-                            customdata=[[float(v)] for v in resumo_mes_categoria["Valor Desembolsado"].tolist()],
+                            customdata=[
+                                [float(v)]
+                                for v in resumo_mes_categoria["Valor Desembolsado"].tolist()
+                            ],
                             hovertemplate=(
                                 "<b>%{label}</b><br>"
                                 "Valor: R$ %{customdata[0]:,.2f}<br>"
@@ -956,25 +990,170 @@ with tab_dashboard:
                     ),
                     margin=dict(t=60, b=80, l=20, r=20),
                     height=420,
+                    clickmode="event+select",
                 )
 
-                st.plotly_chart(fig1, use_container_width=True)
+                st.caption(
+                    "Toque ou clique em uma fatia para abrir os locais daquela categoria."
+                )
 
-                tabela_categoria = resumo_mes_categoria.copy()
-                tabela_categoria["Percentual"] = (
-                    tabela_categoria["Valor Desembolsado"] / total_mes * 100
-                ).round(2)
-                tabela_categoria["Valor"] = tabela_categoria[
+                try:
+                    evento_categoria_mes = st.plotly_chart(
+                        fig1,
+                        use_container_width=True,
+                        key="grafico_categoria_mes_interativo",
+                        on_select="rerun",
+                        selection_mode="points",
+                    )
+                    categoria_clicada_mes = obter_label_fatia_selecionada(
+                        evento_categoria_mes
+                    )
+                except TypeError:
+                    # Compatibilidade com versões antigas do Streamlit.
+                    st.plotly_chart(
+                        fig1,
+                        use_container_width=True,
+                        key="grafico_categoria_mes_simples",
+                    )
+                    categoria_clicada_mes = ""
+
+                categorias_mes = (
+                    resumo_mes_categoria["Categoria"].astype(str).tolist()
+                )
+
+                if (
+                    "categoria_detalhe_mes" not in st.session_state
+                    or st.session_state["categoria_detalhe_mes"] not in categorias_mes
+                ):
+                    st.session_state["categoria_detalhe_mes"] = categorias_mes[0]
+
+                if categoria_clicada_mes in categorias_mes:
+                    st.session_state["categoria_detalhe_mes"] = categoria_clicada_mes
+
+                categoria_detalhe_mes = st.selectbox(
+                    "Selecione a categoria para ver os locais",
+                    categorias_mes,
+                    index=categorias_mes.index(
+                        st.session_state["categoria_detalhe_mes"]
+                    ),
+                    key="seletor_categoria_detalhe_mes",
+                )
+                st.session_state["categoria_detalhe_mes"] = categoria_detalhe_mes
+
+                locais_categoria_mes = (
+                    df_mes[df_mes["Categoria"] == categoria_detalhe_mes]
+                    .groupby("Local", as_index=False)["Valor Desembolsado"]
+                    .sum()
+                    .sort_values("Valor Desembolsado", ascending=False)
+                )
+
+                total_categoria_mes = locais_categoria_mes[
                     "Valor Desembolsado"
-                ].apply(formatar_moeda)
+                ].sum()
 
-                st.dataframe(
-                    tabela_categoria[
-                        ["Categoria", "Valor", "Percentual"]
-                    ].rename(columns={"Percentual": "%"}),
-                    use_container_width=True,
-                    hide_index=True,
+                st.markdown(
+                    f"#### 🗺️ Locais dentro de **{categoria_detalhe_mes}**"
                 )
+
+                if locais_categoria_mes.empty:
+                    st.info("Nenhum local encontrado nessa categoria.")
+                else:
+                    fig_locais_categoria_mes = go.Figure(
+                        data=[
+                            go.Pie(
+                                labels=locais_categoria_mes["Local"]
+                                .astype(str)
+                                .tolist(),
+                                values=[
+                                    float(v)
+                                    for v in locais_categoria_mes[
+                                        "Valor Desembolsado"
+                                    ].tolist()
+                                ],
+                                hole=0.35,
+                                sort=False,
+                                direction="clockwise",
+                                textinfo="label+percent",
+                                customdata=[
+                                    [float(v)]
+                                    for v in locais_categoria_mes[
+                                        "Valor Desembolsado"
+                                    ].tolist()
+                                ],
+                                hovertemplate=(
+                                    "<b>%{label}</b><br>"
+                                    "Valor: R$ %{customdata[0]:,.2f}<br>"
+                                    "Percentual na categoria: %{percent}"
+                                    "<extra></extra>"
+                                ),
+                            )
+                        ]
+                    )
+
+                    fig_locais_categoria_mes.update_layout(
+                        title=(
+                            f"Total em {categoria_detalhe_mes}: "
+                            f"{formatar_moeda(total_categoria_mes)}"
+                        ),
+                        showlegend=True,
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=-0.20,
+                        ),
+                        margin=dict(t=60, b=80, l=20, r=20),
+                        height=420,
+                    )
+
+                    st.plotly_chart(
+                        fig_locais_categoria_mes,
+                        use_container_width=True,
+                        key="grafico_locais_categoria_mes",
+                    )
+
+                    with st.expander(
+                        f"📋 Ver valores dos locais em {categoria_detalhe_mes}",
+                        expanded=False,
+                    ):
+                        tabela_locais_categoria_mes = locais_categoria_mes.copy()
+                        tabela_locais_categoria_mes["% da categoria"] = (
+                            tabela_locais_categoria_mes["Valor Desembolsado"]
+                            / total_categoria_mes
+                            * 100
+                        ).round(2)
+                        tabela_locais_categoria_mes["Valor"] = (
+                            tabela_locais_categoria_mes[
+                                "Valor Desembolsado"
+                            ].apply(formatar_moeda)
+                        )
+
+                        st.dataframe(
+                            tabela_locais_categoria_mes[
+                                ["Local", "Valor", "% da categoria"]
+                            ],
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+
+                with st.expander(
+                    "📋 Ver resumo de todas as categorias do mês",
+                    expanded=False,
+                ):
+                    tabela_categoria = resumo_mes_categoria.copy()
+                    tabela_categoria["Percentual"] = (
+                        tabela_categoria["Valor Desembolsado"] / total_mes * 100
+                    ).round(2)
+                    tabela_categoria["Valor"] = tabela_categoria[
+                        "Valor Desembolsado"
+                    ].apply(formatar_moeda)
+
+                    st.dataframe(
+                        tabela_categoria[
+                            ["Categoria", "Valor", "Percentual"]
+                        ].rename(columns={"Percentual": "%"}),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
             st.markdown("---")
             st.subheader(f"👥 Gastos por Pessoa – {mes_selecionado_str}")
@@ -1042,12 +1221,22 @@ with tab_dashboard:
                     data=[
                         go.Pie(
                             labels=resumo_ano_categoria["Categoria"].astype(str).tolist(),
-                            values=[float(v) for v in resumo_ano_categoria["Valor Desembolsado"].tolist()],
+                            values=[
+                                float(v)
+                                for v in resumo_ano_categoria[
+                                    "Valor Desembolsado"
+                                ].tolist()
+                            ],
                             hole=0.35,
                             sort=False,
                             direction="clockwise",
                             textinfo="label+percent",
-                            customdata=[[float(v)] for v in resumo_ano_categoria["Valor Desembolsado"].tolist()],
+                            customdata=[
+                                [float(v)]
+                                for v in resumo_ano_categoria[
+                                    "Valor Desembolsado"
+                                ].tolist()
+                            ],
                             hovertemplate=(
                                 "<b>%{label}</b><br>"
                                 "Valor: R$ %{customdata[0]:,.2f}<br>"
@@ -1068,9 +1257,145 @@ with tab_dashboard:
                     ),
                     margin=dict(t=60, b=80, l=20, r=20),
                     height=440,
+                    clickmode="event+select",
                 )
 
-                st.plotly_chart(fig3, use_container_width=True)
+                st.caption(
+                    "Toque ou clique em uma fatia para abrir os locais daquela categoria no ano."
+                )
+
+                try:
+                    evento_categoria_ano = st.plotly_chart(
+                        fig3,
+                        use_container_width=True,
+                        key="grafico_categoria_ano_interativo",
+                        on_select="rerun",
+                        selection_mode="points",
+                    )
+                    categoria_clicada_ano = obter_label_fatia_selecionada(
+                        evento_categoria_ano
+                    )
+                except TypeError:
+                    st.plotly_chart(
+                        fig3,
+                        use_container_width=True,
+                        key="grafico_categoria_ano_simples",
+                    )
+                    categoria_clicada_ano = ""
+
+                categorias_ano = (
+                    resumo_ano_categoria["Categoria"].astype(str).tolist()
+                )
+
+                if (
+                    "categoria_detalhe_ano" not in st.session_state
+                    or st.session_state["categoria_detalhe_ano"] not in categorias_ano
+                ):
+                    st.session_state["categoria_detalhe_ano"] = categorias_ano[0]
+
+                if categoria_clicada_ano in categorias_ano:
+                    st.session_state["categoria_detalhe_ano"] = categoria_clicada_ano
+
+                categoria_detalhe_ano = st.selectbox(
+                    "Selecione a categoria para ver os locais no ano",
+                    categorias_ano,
+                    index=categorias_ano.index(
+                        st.session_state["categoria_detalhe_ano"]
+                    ),
+                    key="seletor_categoria_detalhe_ano",
+                )
+                st.session_state["categoria_detalhe_ano"] = categoria_detalhe_ano
+
+                locais_categoria_ano = (
+                    df_ano[df_ano["Categoria"] == categoria_detalhe_ano]
+                    .groupby("Local", as_index=False)["Valor Desembolsado"]
+                    .sum()
+                    .sort_values("Valor Desembolsado", ascending=False)
+                )
+
+                total_categoria_ano = locais_categoria_ano[
+                    "Valor Desembolsado"
+                ].sum()
+
+                with st.expander(
+                    f"🗺️ Ver locais de {categoria_detalhe_ano} no ano",
+                    expanded=False,
+                ):
+                    if locais_categoria_ano.empty:
+                        st.info("Nenhum local encontrado nessa categoria.")
+                    else:
+                        fig_locais_categoria_ano = go.Figure(
+                            data=[
+                                go.Pie(
+                                    labels=locais_categoria_ano["Local"]
+                                    .astype(str)
+                                    .tolist(),
+                                    values=[
+                                        float(v)
+                                        for v in locais_categoria_ano[
+                                            "Valor Desembolsado"
+                                        ].tolist()
+                                    ],
+                                    hole=0.35,
+                                    sort=False,
+                                    direction="clockwise",
+                                    textinfo="label+percent",
+                                    customdata=[
+                                        [float(v)]
+                                        for v in locais_categoria_ano[
+                                            "Valor Desembolsado"
+                                        ].tolist()
+                                    ],
+                                    hovertemplate=(
+                                        "<b>%{label}</b><br>"
+                                        "Valor: R$ %{customdata[0]:,.2f}<br>"
+                                        "Percentual na categoria: %{percent}"
+                                        "<extra></extra>"
+                                    ),
+                                )
+                            ]
+                        )
+
+                        fig_locais_categoria_ano.update_layout(
+                            title=(
+                                f"Total anual em {categoria_detalhe_ano}: "
+                                f"{formatar_moeda(total_categoria_ano)}"
+                            ),
+                            showlegend=True,
+                            legend=dict(
+                                orientation="h",
+                                yanchor="bottom",
+                                y=-0.20,
+                            ),
+                            margin=dict(t=60, b=80, l=20, r=20),
+                            height=440,
+                        )
+
+                        st.plotly_chart(
+                            fig_locais_categoria_ano,
+                            use_container_width=True,
+                            key="grafico_locais_categoria_ano",
+                        )
+
+                        tabela_locais_categoria_ano = locais_categoria_ano.copy()
+                        tabela_locais_categoria_ano["% da categoria"] = (
+                            tabela_locais_categoria_ano["Valor Desembolsado"]
+                            / total_categoria_ano
+                            * 100
+                        ).round(2)
+                        tabela_locais_categoria_ano["Valor"] = (
+                            tabela_locais_categoria_ano[
+                                "Valor Desembolsado"
+                            ].apply(formatar_moeda)
+                        )
+
+                        st.dataframe(
+                            tabela_locais_categoria_ano[
+                                ["Local", "Valor", "% da categoria"]
+                            ],
+                            use_container_width=True,
+                            hide_index=True,
+                        )
 
             with st.expander("📋 Ver lançamentos detalhados do mês"):
                 if df_mes.empty:
