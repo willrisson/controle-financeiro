@@ -96,6 +96,9 @@ if "form_limpo" not in st.session_state:
 if "processando_envio" not in st.session_state:
     st.session_state["processando_envio"] = False
 
+if "data_hora_envio" not in st.session_state:
+    st.session_state["data_hora_envio"] = None
+
 if "data_gasto" not in st.session_state:
     st.session_state["data_gasto"] = (datetime.now() - timedelta(hours=3)).date()
 
@@ -232,12 +235,17 @@ with tab_lancamento:
         data_gasto_selecionada,
         hora_gasto_selecionada,
     )
+    st.caption(
+        "Este é o carimbo que será gravado na planilha e também define o mês da primeira parcela."
+    )
 
     st.markdown("---")
 
     # --- SEÇÃO DE QUEM ESTÁ GASTANDO ---
     st.markdown("### 👤 Quem está gastando?")
-    lista_gastadores_atualizada = sorted(list(set(LISTA_GASTADORES_BASE + st.session_state["gastadores_extras"])))
+    lista_gastadores_atualizada = list(dict.fromkeys(
+        LISTA_GASTADORES_BASE + st.session_state["gastadores_extras"]
+    ))
     lista_gastadores_com_outro = lista_gastadores_atualizada + ["Outro..."]
 
     col_q_sel, col_q_txt = st.columns([2, 2])
@@ -457,6 +465,7 @@ with tab_lancamento:
         elif not descricao_gasto or not descricao_gasto.strip() or not valor_texto or not valor_texto.strip():
             st.warning("Preencha a descrição e o valor.")
         else:
+            st.session_state["data_hora_envio"] = data_hora_gasto
             st.session_state["processando_envio"] = True
             st.rerun()
 
@@ -495,6 +504,7 @@ with tab_lancamento:
                     status.update(label="❌ Erro na Autenticação!", state="error")
                     st.error(f"Detalhe: {e}")
                     st.session_state["processando_envio"] = False
+                    st.session_state["data_hora_envio"] = None
                     st.stop()
 
                 status.write(f"📂 Conectando à planilha e buscando aba '{NOME_ABA}'...")
@@ -506,6 +516,7 @@ with tab_lancamento:
                     status.update(label="❌ Erro ao localizar a planilha/aba!", state="error")
                     st.error(f"Detalhe: {e}")
                     st.session_state["processando_envio"] = False
+                    st.session_state["data_hora_envio"] = None
                     st.stop()
 
                 status.write("🗓️ Mapeando e garantindo cabeçalhos exatos...")
@@ -520,7 +531,7 @@ with tab_lancamento:
 
                 cabecalho_final = CABECALHO_BASE + meses_existentes
 
-                data_lancamento = data_hora_gasto
+                data_lancamento = st.session_state.get("data_hora_envio") or data_hora_gasto
                 detalhe_pagamento = f"{forma_pagamento} ({banco_emissor})"
                 valor_parcela = round(valor_gasto / num_parcelas, 2) if parcelado and num_parcelas > 1 else valor_gasto
 
@@ -589,6 +600,7 @@ with tab_lancamento:
                 st.cache_data.clear()
                 st.session_state["form_limpo"] = True
                 st.session_state["processando_envio"] = False
+                st.session_state["data_hora_envio"] = None
                 st.rerun()
 
 # ============================================================
