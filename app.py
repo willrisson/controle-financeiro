@@ -211,63 +211,58 @@ st.markdown("**Lançador Organizado**")
 tab_lancamento, tab_dashboard = st.tabs(["📝 Lançar Gasto", "📊 Dashboard"])
 
 with tab_lancamento:
-    # --- DATA E HORA DO GASTO ---
-    st.markdown("### 📅 Data e Hora do Gasto")
-    col_data, col_hora = st.columns(2)
-
-    with col_data:
-        data_gasto_selecionada = st.date_input(
-            "Data do gasto",
-            key="data_gasto",
-            format="DD/MM/YYYY",
-        )
-
-    with col_hora:
-        hora_gasto_selecionada = st.time_input(
-            "Hora do gasto",
-            key="hora_gasto",
-            step=60,
-        )
-
-    data_hora_gasto = datetime.combine(
-        data_gasto_selecionada,
-        hora_gasto_selecionada,
-    )
-    st.caption(
-        "Este é o carimbo que será gravado na planilha e também define o mês da primeira parcela."
-    )
-
-    st.markdown("---")
-
-    # --- SEÇÃO DE QUEM ESTÁ GASTANDO ---
+    # --- SEÇÃO DE QUEM ESTÁ GASTANDO + DATA/HORA COMPACTAS ---
     st.markdown("### 👤 Quem está gastando?")
     lista_gastadores_atualizada = list(dict.fromkeys(
         LISTA_GASTADORES_BASE + st.session_state["gastadores_extras"]
     ))
     lista_gastadores_com_outro = lista_gastadores_atualizada + ["Outro..."]
 
-    col_q_sel, col_q_txt = st.columns([2, 2])
-    with col_q_sel:
-        quem_gastou_selecionado = st.selectbox("Selecione o membro", lista_gastadores_com_outro, key="select_gastador", label_visibility="collapsed")
+    col_membro, col_data_hora = st.columns([1.55, 1.45], gap="small")
+
+    with col_membro:
+        st.markdown(
+            "<div style='font-size:0.82rem; color:#888; margin-bottom:0.25rem;'>Membro cadastrado selecionado</div>",
+            unsafe_allow_html=True,
+        )
+        quem_gastou_selecionado = st.selectbox(
+            "Selecione o membro",
+            lista_gastadores_com_outro,
+            key="select_gastador",
+            label_visibility="collapsed",
+        )
+
+    with col_data_hora:
+        col_data, col_hora = st.columns([1.25, 0.75], gap="small")
+
+        with col_data:
+            data_gasto_selecionada = st.date_input(
+                "Data",
+                key="data_gasto",
+                format="DD/MM/YYYY",
+            )
+
+        with col_hora:
+            hora_gasto_selecionada = st.time_input(
+                "Hora",
+                key="hora_gasto",
+                step=60,
+            )
+
+    data_hora_gasto = datetime.combine(
+        data_gasto_selecionada,
+        hora_gasto_selecionada,
+    )
 
     quem_gastou = quem_gastou_selecionado
     if quem_gastou_selecionado == "Outro...":
-        with col_q_txt:
-            outro_membro_input = st.text_input("Nome do outro membro", placeholder="Digite o nome...", key="input_outro_membro", label_visibility="collapsed")
-            if outro_membro_input.strip():
-                quem_gastou = outro_membro_input.strip()
-    else:
-        with col_q_txt:
-            st.markdown(
-                """
-                <div style="height:38px; display:flex; align-items:center;">
-                    <span style="color:#888; font-size:0.82rem;">
-                        Membro cadastrado selecionado
-                    </span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+        outro_membro_input = st.text_input(
+            "Nome do outro membro",
+            placeholder="Digite o nome...",
+            key="input_outro_membro",
+        )
+        if outro_membro_input.strip():
+            quem_gastou = outro_membro_input.strip()
 
     st.markdown("---")
 
