@@ -68,7 +68,7 @@ LISTA_CATEGORIAS_BASE = [
     "Saúde", "Vestuário", "Manutenção", "Educação", "Infraestrutura", "Outros"
 ]
 
-LISTA_GASTADORES_BASE = ["Willian", "Aline", "Bernardo"]
+LISTA_GASTADORES_BASE = ["Willian", "Aline", "Bernardo", "Aline e Willian", "Aline e Bernardo", "Willian e Bernardo", "Aline-Will-Beh"]
 
 CABECALHO_BASE = [
     "Data/Hora",
