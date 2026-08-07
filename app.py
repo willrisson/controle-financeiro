@@ -117,6 +117,12 @@ if "limpar_novo_local" not in st.session_state:
 if "limpar_nova_categoria" not in st.session_state:
     st.session_state["limpar_nova_categoria"] = False
 
+if "mensagem_local" not in st.session_state:
+    st.session_state["mensagem_local"] = None
+
+if "mensagem_categoria" not in st.session_state:
+    st.session_state["mensagem_categoria"] = None
+
 # Limpeza de campos se acionada
 if st.session_state["form_limpo"]:
     agora_local = datetime.now() - timedelta(hours=3)
@@ -129,14 +135,6 @@ if st.session_state["form_limpo"]:
     st.session_state["check_parcelado"] = False
     st.session_state["input_num_parcelas"] = ""
     st.session_state["form_limpo"] = False
-
-if st.session_state["limpar_novo_local"]:
-    st.session_state["input_local_novo"] = ""
-    st.session_state["limpar_novo_local"] = False
-
-if st.session_state["limpar_nova_categoria"]:
-    st.session_state["input_nova_categoria"] = ""
-    st.session_state["limpar_nova_categoria"] = False
 
 def garantir_coluna_local(worksheet):
     """
@@ -305,12 +303,29 @@ with tab_lancamento:
 
     opcoes_local = lista_locais_atualizada or ["Selecione ou adicione um local"]
 
-    if st.session_state["proximo_local_selecionado"] in opcoes_local:
-        st.session_state["select_local"] = st.session_state["proximo_local_selecionado"]
-        st.session_state["proximo_local_selecionado"] = None
-
     # --- SEÇÃO DE LOCAL DO GASTO ---
     st.markdown("### 🗺️ Local do Gasto")
+
+    def adicionar_local_callback():
+        local_limpo = st.session_state.get("input_local_novo", "").strip()
+
+        if not local_limpo:
+            st.session_state["mensagem_local"] = ("warning", "Digite um local antes de adicionar.")
+            return
+
+        if local_limpo not in lista_locais_atualizada:
+            st.session_state["locais_extras"].append(local_limpo)
+
+        # O callback é executado antes da nova renderização. Assim, podemos
+        # selecionar o novo item e limpar o campo sem conflito com o widget.
+        st.session_state["select_local"] = local_limpo
+        st.session_state["input_local_novo"] = ""
+        st.session_state["mensagem_local"] = (
+            "success",
+            f"Local '{local_limpo}' adicionado e selecionado!",
+        )
+        carregar_locais_existentes.clear()
+
     col_local_sel, col_local_txt, col_local_add = st.columns([2, 2, 1.15])
 
     with col_local_sel:
@@ -329,21 +344,21 @@ with tab_lancamento:
 
     with col_local_add:
         st.markdown("<div style='height:1.72rem;'></div>", unsafe_allow_html=True)
-        if st.button("➕ Local", type="secondary", use_container_width=True, key="btn_add_local"):
-            local_limpo = novo_local_input.strip()
-            if local_limpo:
-                if local_limpo not in lista_locais_atualizada:
-                    st.session_state["locais_extras"].append(local_limpo)
-                    st.session_state["proximo_local_selecionado"] = local_limpo
-                    st.session_state["limpar_novo_local"] = True
-                    carregar_locais_existentes.clear()
-                    st.success(f"Local '{local_limpo}' adicionado e selecionado!")
-                    time.sleep(0.4)
-                    st.rerun()
-                else:
-                    st.warning("Já existe.")
-            else:
-                st.warning("Digite algo.")
+        st.button(
+            "➕ Local",
+            type="secondary",
+            use_container_width=True,
+            key="btn_add_local",
+            on_click=adicionar_local_callback,
+        )
+
+    if st.session_state["mensagem_local"]:
+        tipo_mensagem, texto_mensagem = st.session_state["mensagem_local"]
+        if tipo_mensagem == "success":
+            st.success(texto_mensagem)
+        else:
+            st.warning(texto_mensagem)
+        st.session_state["mensagem_local"] = None
 
     local_final = (
         local_selecionado
@@ -388,10 +403,6 @@ with tab_lancamento:
     lista_base_carregada = carregar_categorias_existentes()
     lista_categorias_atualizada = sorted(list(set(lista_base_carregada + st.session_state["categorias_extras"])))
 
-    if st.session_state["proxima_categoria_selecionada"] in lista_categorias_atualizada:
-        st.session_state["select_categoria"] = st.session_state["proxima_categoria_selecionada"]
-        st.session_state["proxima_categoria_selecionada"] = None
-
     categoria_sugerida = "Outros"
     if descricao_gasto and descricao_gasto.strip():
         categoria_sugerida = classificar_categoria_groq(descricao_gasto, None, lista_categorias_atualizada)
@@ -403,6 +414,30 @@ with tab_lancamento:
 
     # --- SEÇÃO DE CATEGORIA ---
     st.markdown("### 📂 Categoria do Gasto")
+
+    def adicionar_categoria_callback():
+        categoria_limpa = st.session_state.get("input_nova_categoria", "").strip()
+
+        if not categoria_limpa:
+            st.session_state["mensagem_categoria"] = (
+                "warning",
+                "Digite uma categoria antes de adicionar.",
+            )
+            return
+
+        if categoria_limpa not in lista_categorias_atualizada:
+            st.session_state["categorias_extras"].append(categoria_limpa)
+
+        # Seleciona imediatamente a categoria criada e esvazia o campo.
+        # Com o valor vazio, o placeholder volta a aparecer automaticamente.
+        st.session_state["select_categoria"] = categoria_limpa
+        st.session_state["input_nova_categoria"] = ""
+        st.session_state["mensagem_categoria"] = (
+            "success",
+            f"Categoria '{categoria_limpa}' adicionada e selecionada!",
+        )
+        carregar_categorias_existentes.clear()
+
     col_cat_sel, col_nova_txt, col_btn_add = st.columns([2, 2, 1.15])
 
     with col_cat_sel:
@@ -424,21 +459,21 @@ with tab_lancamento:
 
     with col_btn_add:
         st.markdown("<div style='height:1.72rem;'></div>", unsafe_allow_html=True)
-        if st.button("➕ Categoria", type="secondary", use_container_width=True, key="btn_add_cat"):
-            cat_limpa = nova_cat_input.strip()
-            if cat_limpa:
-                if cat_limpa not in lista_categorias_atualizada:
-                    st.session_state["categorias_extras"].append(cat_limpa)
-                    st.session_state["proxima_categoria_selecionada"] = cat_limpa
-                    st.session_state["limpar_nova_categoria"] = True
-                    carregar_categorias_existentes.clear()
-                    st.success(f"Categoria '{cat_limpa}' adicionada e selecionada!")
-                    time.sleep(0.4)
-                    st.rerun()
-                else:
-                    st.warning("Já existe.")
-            else:
-                st.warning("Digite algo.")
+        st.button(
+            "➕ Categoria",
+            type="secondary",
+            use_container_width=True,
+            key="btn_add_cat",
+            on_click=adicionar_categoria_callback,
+        )
+
+    if st.session_state["mensagem_categoria"]:
+        tipo_mensagem, texto_mensagem = st.session_state["mensagem_categoria"]
+        if tipo_mensagem == "success":
+            st.success(texto_mensagem)
+        else:
+            st.warning(texto_mensagem)
+        st.session_state["mensagem_categoria"] = None
 
     categoria_final = categoria_selecionada
 
@@ -1078,11 +1113,14 @@ with tab_dashboard:
                     showlegend=True,
                     legend=dict(
                         orientation="h",
-                        yanchor="bottom",
-                        y=-0.20,
+                        x=0.5,
+                        xanchor="center",
+                        y=-0.18,
+                        yanchor="top",
+                        font=dict(size=12),
                     ),
-                    margin=dict(t=60, b=80, l=20, r=20),
-                    height=420,
+                    margin=dict(t=60, b=170, l=20, r=20),
+                    height=510,
                     clickmode="event+select",
                 )
 
@@ -1191,11 +1229,14 @@ with tab_dashboard:
                         showlegend=True,
                         legend=dict(
                             orientation="h",
-                            yanchor="bottom",
-                            y=-0.20,
+                            x=0.5,
+                            xanchor="center",
+                            y=-0.18,
+                            yanchor="top",
+                            font=dict(size=12),
                         ),
-                        margin=dict(t=60, b=80, l=20, r=20),
-                        height=420,
+                        margin=dict(t=60, b=170, l=20, r=20),
+                        height=510,
                     )
 
                     st.plotly_chart(
@@ -1279,11 +1320,14 @@ with tab_dashboard:
                     showlegend=True,
                     legend=dict(
                         orientation="h",
-                        yanchor="bottom",
-                        y=-0.20,
+                        x=0.5,
+                        xanchor="center",
+                        y=-0.18,
+                        yanchor="top",
+                        font=dict(size=12),
                     ),
-                    margin=dict(t=60, b=80, l=20, r=20),
-                    height=420,
+                    margin=dict(t=60, b=170, l=20, r=20),
+                    height=510,
                 )
 
                 st.plotly_chart(fig2, use_container_width=True)
@@ -1345,11 +1389,14 @@ with tab_dashboard:
                     showlegend=True,
                     legend=dict(
                         orientation="h",
-                        yanchor="bottom",
-                        y=-0.20,
+                        x=0.5,
+                        xanchor="center",
+                        y=-0.18,
+                        yanchor="top",
+                        font=dict(size=12),
                     ),
-                    margin=dict(t=60, b=80, l=20, r=20),
-                    height=440,
+                    margin=dict(t=60, b=170, l=20, r=20),
+                    height=530,
                     clickmode="event+select",
                 )
 
@@ -1457,11 +1504,14 @@ with tab_dashboard:
                             showlegend=True,
                             legend=dict(
                                 orientation="h",
-                                yanchor="bottom",
-                                y=-0.20,
+                                x=0.5,
+                                xanchor="center",
+                                y=-0.18,
+                                yanchor="top",
+                                font=dict(size=12),
                             ),
-                            margin=dict(t=60, b=80, l=20, r=20),
-                            height=440,
+                            margin=dict(t=60, b=170, l=20, r=20),
+                            height=530,
                         )
 
                         st.plotly_chart(
@@ -1562,11 +1612,14 @@ with tab_dashboard:
                     showlegend=True,
                     legend=dict(
                         orientation="h",
-                        yanchor="bottom",
-                        y=-0.20,
+                        x=0.5,
+                        xanchor="center",
+                        y=-0.18,
+                        yanchor="top",
+                        font=dict(size=12),
                     ),
-                    margin=dict(t=60, b=80, l=20, r=20),
-                    height=420,
+                    margin=dict(t=60, b=170, l=20, r=20),
+                    height=510,
                 )
                 st.plotly_chart(fig_local_mes, use_container_width=True)
 
@@ -1624,11 +1677,14 @@ with tab_dashboard:
                     showlegend=True,
                     legend=dict(
                         orientation="h",
-                        yanchor="bottom",
-                        y=-0.20,
+                        x=0.5,
+                        xanchor="center",
+                        y=-0.18,
+                        yanchor="top",
+                        font=dict(size=12),
                     ),
-                    margin=dict(t=60, b=80, l=20, r=20),
-                    height=440,
+                    margin=dict(t=60, b=170, l=20, r=20),
+                    height=530,
                 )
                 st.plotly_chart(fig_local_ano, use_container_width=True)
 
