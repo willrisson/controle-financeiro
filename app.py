@@ -44,6 +44,50 @@ st.markdown(
         border-color: #70757a;
         color: #ffffff;
     }
+
+    /* Alinha os controles de gastador, data e hora na mesma altura. */
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
+    div[data-testid="stDateInput"] div[data-baseweb="input"],
+    div[data-testid="stTimeInput"] div[data-baseweb="select"] > div {
+        min-height: 42px;
+        height: 42px;
+    }
+
+    /* Mantém os rótulos Data/Hora alinhados aos demais rótulos. */
+    div[data-testid="stDateInput"] label,
+    div[data-testid="stTimeInput"] label,
+    div[data-testid="stSelectbox"] label {
+        min-height: 24px;
+        display: flex;
+        align-items: flex-end;
+        margin-bottom: 0.25rem;
+    }
+
+    /* Adiciona uma seta no campo de data para indicar que ele é clicável. */
+    div[data-testid="stDateInput"] div[data-baseweb="input"] {
+        position: relative;
+        padding-right: 2.1rem;
+    }
+
+    div[data-testid="stDateInput"] div[data-baseweb="input"]::after {
+        content: "⌄";
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-56%);
+        color: currentColor;
+        font-size: 1.15rem;
+        font-weight: 700;
+        pointer-events: none;
+        line-height: 1;
+    }
+
+    /* No celular, conserva proporções legíveis sem esmagar os campos. */
+    @media (max-width: 640px) {
+        div[data-testid="stDateInput"] div[data-baseweb="input"]::after {
+            right: 0.55rem;
+        }
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -211,43 +255,36 @@ st.markdown("**Lançador Organizado**")
 tab_lancamento, tab_dashboard = st.tabs(["📝 Lançar Gasto", "📊 Dashboard"])
 
 with tab_lancamento:
-    # --- SEÇÃO DE QUEM ESTÁ GASTANDO + DATA/HORA COMPACTAS ---
+    # --- SEÇÃO DE QUEM ESTÁ GASTANDO + DATA/HORA ALINHADAS ---
     st.markdown("### 👤 Quem está gastando?")
     lista_gastadores_atualizada = list(dict.fromkeys(
         LISTA_GASTADORES_BASE + st.session_state["gastadores_extras"]
     ))
     lista_gastadores_com_outro = lista_gastadores_atualizada + ["Outro..."]
 
-    col_membro, col_data_hora = st.columns([1.55, 1.45], gap="small")
+    # Três controles no mesmo nível: gastador maior, data e hora proporcionais.
+    col_membro, col_data, col_hora = st.columns([2.05, 1.15, 0.95], gap="small")
 
     with col_membro:
-        st.markdown(
-            "<div style='font-size:0.82rem; color:#888; margin-bottom:0.25rem;'>Membro cadastrado selecionado</div>",
-            unsafe_allow_html=True,
-        )
         quem_gastou_selecionado = st.selectbox(
-            "Selecione o membro",
+            "Membro cadastrado selecionado",
             lista_gastadores_com_outro,
             key="select_gastador",
-            label_visibility="collapsed",
         )
 
-    with col_data_hora:
-        col_data, col_hora = st.columns([1.25, 0.75], gap="small")
+    with col_data:
+        data_gasto_selecionada = st.date_input(
+            "Data",
+            key="data_gasto",
+            format="DD/MM/YYYY",
+        )
 
-        with col_data:
-            data_gasto_selecionada = st.date_input(
-                "Data",
-                key="data_gasto",
-                format="DD/MM/YYYY",
-            )
-
-        with col_hora:
-            hora_gasto_selecionada = st.time_input(
-                "Hora",
-                key="hora_gasto",
-                step=60,
-            )
+    with col_hora:
+        hora_gasto_selecionada = st.time_input(
+            "Hora",
+            key="hora_gasto",
+            step=60,
+        )
 
     data_hora_gasto = datetime.combine(
         data_gasto_selecionada,
